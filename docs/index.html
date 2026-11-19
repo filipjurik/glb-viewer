@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GLB Viewer – live demo</title>
+<style>
+  html, body { margin: 0; height: 100%; background: radial-gradient(ellipse at 50% 30%, #2a303c, #14171d); color: #e6e8ec;
+    font: 14px/1.4 system-ui, sans-serif; overflow: hidden; }
+  #stage { position: fixed; inset: 0 0 56px 0; }
+  dom-viewer-card { display: block; height: 100%; }
+  #bar { position: fixed; left: 0; right: 0; bottom: 0; height: 56px; display: flex; align-items: center; justify-content: center;
+    gap: 18px; padding: 0 12px; background: rgba(0,0,0,.35); backdrop-filter: blur(6px); flex-wrap: wrap; }
+  #bar label { display: flex; align-items: center; gap: 8px; }
+  #time { width: min(320px, 46vw); }
+  #clock { width: 44px; text-align: right; font-variant-numeric: tabular-nums; }
+  button { font: inherit; color: inherit; background: rgba(255,255,255,.12); border: 0; border-radius: 14px; padding: 5px 12px; cursor: pointer; }
+  a { color: #8ab4ff; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="bar">
+  <label>Time of day <input id="time" type="range" min="0" max="1439" step="5"><span id="clock"></span></label>
+  <button id="now">Now</button>
+  <label><input id="lights" type="checkbox" checked> Lights</label>
+  <a href="https://github.com/filipjurik/glb-viewer">GitHub</a>
+</div>
+
+<script>
+  // The card is written for Home Assistant; this page provides the two elements it relies on.
+  customElements.define("ha-card", class extends HTMLElement {
+    constructor() { super(); this.style.display = "block"; this.style.height = "100%"; this.style.background = "transparent"; }
+  });
+  customElements.define("ha-icon", class extends HTMLElement {
+    static get observedAttributes() { return ["icon"]; }
+    attributeChangedCallback() { this.textContent = this.getAttribute("icon") === "mdi:play" ? "\u25B6" : "\u23F8"; }
+  });
+</script>
+<script type="module">
+  import "./glb-viewer.js";
+
+  const CONFIG = {
+  "type": "custom:dom-viewer-card",
+  "model_pitch": -90,
+  "model_roll": -180,
+  "flip_x": true,
+  "min_tilt": 10,
+  "max_tilt": 65,
+  "initial_tilt": 20,
+  "min_zoom": 100,
+  "max_zoom": 300,
+  "initial_zoom": 120,
+  "auto_rotate": true,
+  "auto_rotate_delay": 10000,
+  "rotation_per_second": 15,
+  "exposure": 0.8,
+  "shadow_intensity": 0,
+  "environment": "legacy",
+  "night": "sun",
+  "home_label": "Default",
+  "front_azimuth": 345,
+  "window_glow": 3,
+  "lights_shadows": false,
+  "lights": [
+    {
+      "name": "obyvacka",
+      "glow_only": true,
+      "window_entity_color": true,
+      "windows": "obyvacka",
+      "entities": [
+        "light.obyvacka_ikea_tradfri",
+        "light.loxone_led_obyvacka"
+      ],
+      "position": [
+        2.3,
+        -6.9,
+        2.25
+      ],
+      "color": [
+        255,
+        255,
+        255
+      ],
+      "intensity": 20,
+      "distance": 8,
+      "shadows": true,
+      "softness": 1
+    },
+    {
+      "name": "kuchyna",
+      "glow_only": true,
+      "windows": "kuchyna",
+      "entities": [
+        "light.loxone_kuchyna",
+        "light.loxone_jedalen",
+        "light.led_kuchyna_l",
+        "light.led_kuchyna_r"
+      ],
+      "position": [
+        1.85,
+        -3.19,
+        2.5
+      ],
+      "color": [
+        255,
+        255,
+        255
+      ],
+      "intensity": 53,
+      "distance": 3,
+      "shadows": true,
+      "softness": 1,
+      "use_entity_color": false,
+      "use_brightness": false
+    },
+    {
+      "name": "predchodba",
+      "glow_only": true,
+      "windows": "vchod",
+      "entity": "light.loxone_predchodba",
+      "position": [
+        5.55,
+        -2.38,
+        2.5
+      ],
+      "color": [
+        255,
+        245,
+        229
+      ],
+      "intensity": 3,
+      "distance": 8,
+      "shadows": true,
+      "softness": 1
+    },
+    {
+      "name": "kupelna",
+      "glow_only": true,
+      "windows": "kupelna",
+      "entities": [
+        "light.loxone_kupelna",
+        "light.loxone_zrkadlo"
+      ],
+      "position": [
+        8,
+        -2.38,
+        2.5
+      ],
+      "color": [
+        255,
+        245,
+        229
+      ],
+      "intensity": 25,
+      "distance": 10,
+      "shadows": true,
+      "softness": 1,
+      "use_entity_color": false,
+      "use_brightness": false
+    },
+    {
+      "name": "detska",
+      "glow_only": true,
+      "window_entity_color": true,
+      "windows": "detska",
+      "entity": "light.lidl_rgb_viki",
+      "position": [
+        10.5,
+        -2.38,
+        2.5
+      ],
+      "color": [
+        255,
+        245,
+        229
+      ],
+      "intensity": 20,
+      "distance": 8,
+      "shadows": true,
+      "softness": 1
+    },
+    {
+      "name": "technicka",
+      "glow_only": true,
+      "windows": "technicka",
+      "entity": "light.loxone_technicka",
+      "position": [
+        4,
+        -2,
+        2.5
+      ],
+      "color": [
+        255,
+        255,
+        255
+      ],
+      "intensity": 10,
+      "distance": 8,
+      "shadows": true,
+      "softness": 0,
+      "use_entity_color": false,
+      "use_brightness": false
+    },
+    {
+      "name": "pracovna",
+      "glow_only": true,
+      "windows": "pracovna",
+      "entity": "light.loxone_pracovna",
+      "position": [
+        6,
+        -7,
+        2.5
+      ],
+      "color": [
+        255,
+        237,
+        209
+      ],
+      "intensity": 25,
+      "distance": 8,
+      "shadows": true,
+      "softness": 2,
+      "use_entity_color": false,
+      "use_brightness": false
+    },
+    {
+      "name": "spalna",
+      "glow_only": true,
+      "window_entity_color": true,
+      "windows": "spalna",
+      "entities": [
+        "light.spalna_ikea_tradfri",
+        "light.gu10_betka",
+        "light.gu10_filip"
+      ],
+      "position": [
+        9,
+        -7,
+        2.5
+      ],
+      "color": [
+        255,
+        237,
+        209
+      ],
+      "intensity": 30,
+      "distance": 9,
+      "shadows": true
+    },
+    {
+      "name": "vchod",
+      "entity": "light.loxone_vchod",
+      "position": [
+        5.4,
+        0,
+        2.4
+      ],
+      "color": [
+        255,
+        217,
+        160
+      ],
+      "intensity": 5,
+      "distance": 10,
+      "use_entity_color": false,
+      "use_brightness": false
+    },
+    {
+      "name": "vchod1",
+      "entity": "light.parkovisko",
+      "position": [
+        1.3,
+        2,
+        2.8
+      ],
+      "color": [
+        255,
+        217,
+        160
+      ],
+      "intensity": 12,
+      "distance": 10,
+      "use_entity_color": false,
+      "use_brightness": false
+    },
+    {
+      "name": "vchod2",
+      "entity": "light.parkovisko",
+      "position": [
+        11.5,
+        2,
+        2.8
+      ],
+      "color": [
+        255,
+        217,
+        160
+      ],
+      "intensity": 12,
+      "distance": 10,
+      "use_entity_color": false,
+      "use_brightness": false
+    },
+    {
+      "name": "terasa",
+      "entity": "light.loxone_terasa",
+      "position": [
+        -1,
+        -5.08,
+        2.6
+      ],
+      "color": [
+        255,
+        217,
+        160
+      ],
+      "intensity": 6,
+      "distance": 10,
+      "use_entity_color": false,
+      "use_brightness": false
+    },
+    {
+      "name": "chodba",
+      "glow_only": true,
+      "windows": "vchod",
+      "entity": "light.loxone_chodba",
+      "position": [
+        6.34,
+        -3.98,
+        1.81
+      ],
+      "color": [
+        255,
+        217,
+        160
+      ],
+      "intensity": 30,
+      "distance": 8,
+      "shadows": true,
+      "use_entity_color": false,
+      "use_brightness": false
+    }
+  ],
+  "views": [
+    {
+      "name": "ČOV",
+      "azimuth": -68,
+      "tilt": 38.8,
+      "zoom": 608,
+      "target": [
+        -2.28,
+        1.57,
+        0.02
+      ],
+      "hide": [
+        "COV"
+      ]
+    },
+    {
+      "name": "Terasa",
+      "azimuth": -158.8,
+      "tilt": 39.2,
+      "zoom": 156,
+      "target": [
+        0.42,
+        -0.07,
+        -5.89
+      ]
+    },
+    {
+      "name": "Vzadu",
+      "azimuth": -101.2,
+      "tilt": 27,
+      "zoom": 167,
+      "target": [
+        7.06,
+        -6.35,
+        -5.15
+      ]
+    },
+    {
+      "name": "Búdka2",
+      "azimuth": -185,
+      "tilt": 27.1,
+      "zoom": 481,
+      "target": [
+        12.55,
+        -9.94,
+        1.65
+      ]
+    }
+  ],
+  "material_colors": [
+    {
+      "name": "default material",
+      "color": "#ffffff",
+      "opacity": 1
+    },
+    {
+      "name": "roof_dom",
+      "color": "#828282"
+    },
+    {
+      "name": "door_vchod",
+      "color": "#d9d9d9"
+    },
+    {
+      "name": "window_ram",
+      "color": "#ffffff"
+    },
+    {
+      "name": "roof_B2",
+      "color": "#828282"
+    },
+    {
+      "name": "roof_B1",
+      "color": "#828282"
+    },
+    {
+      "name": "glass_spalna",
+      "color": "#ffffff"
+    },
+    {
+      "name": "glass_pracovna",
+      "color": "#ffffff"
+    },
+    {
+      "name": "glass_obyvacka",
+      "color": "#ffffff"
+    },
+    {
+      "name": "glass_kupelna",
+      "color": "#ffffff"
+    },
+    {
+      "name": "glass_detska",
+      "color": "#ffffff"
+    },
+    {
+      "name": "glass_kuchyna",
+      "color": "#ffffff"
+    },
+    {
+      "name": "glass_budka2",
+      "color": "#ffffff"
+    },
+    {
+      "name": "glass_technicka",
+      "color": "#ffffff"
+    },
+    {
+      "name": "glass_budka1",
+      "color": "#ffffff"
+    }
+  ],
+  "model": "dom3.gltf",
+  "height": "100%",
+  "hide_border": true,
+  "show_reload_button": false,
+  "page_scroll": false
+};
+  const LAT = 48.15, LON = 17.11, TZ = "Europe/Bratislava";
+
+  // simplified solar position (azimuth: degrees clockwise from north, elevation: degrees above the horizon)
+  function sunPosition(date) {
+    const rad = Math.PI / 180;
+    const d = date.getTime() / 86400000 + 2440587.5 - 2451545.0;
+    const g = (357.529 + 0.98560028 * d) % 360;
+    const q = (280.459 + 0.98564736 * d) % 360;
+    const L = q + 1.915 * Math.sin(g * rad) + 0.02 * Math.sin(2 * g * rad);
+    const e = 23.439 - 0.00000036 * d;
+    const ra = Math.atan2(Math.cos(e * rad) * Math.sin(L * rad), Math.cos(L * rad)) / rad;
+    const dec = Math.asin(Math.sin(e * rad) * Math.sin(L * rad)) / rad;
+    const gmst = (18.697374558 + 24.06570982441908 * d) % 24;
+    const lst = (gmst * 15 + LON) * rad;
+    const H = lst - ra * rad;
+    const el = Math.asin(Math.sin(LAT * rad) * Math.sin(dec * rad) + Math.cos(LAT * rad) * Math.cos(dec * rad) * Math.cos(H));
+    const az = Math.atan2(-Math.sin(H), Math.tan(dec * rad) * Math.cos(LAT * rad) - Math.sin(LAT * rad) * Math.cos(H));
+    return { azimuth: (az / rad + 360) % 360, elevation: el / rad };
+  }
+
+  // minutes after midnight in Europe/Bratislava -> Date
+  function dateAt(minutes) {
+    const fmt = (t) => new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(t);
+    const [y, m, dd] = fmt(new Date()).split("-").map(Number);
+    let t = Date.UTC(y, m - 1, dd, 0, minutes);
+    const local = new Date(new Date(t).toLocaleString("en-US", { timeZone: TZ }));
+    t -= local.getTime() - new Date(new Date(t).toLocaleString("en-US", { timeZone: "UTC" })).getTime();
+    return new Date(t);
+  }
+
+  function nowMinutes() {
+    const p = new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date()).split(":");
+    return Number(p[0]) * 60 + Number(p[1]);
+  }
+
+  // entities used by the lights (colors for the ones whose window glows in the entity color)
+  const COLORS = {
+    "light.obyvacka_ikea_tradfri": [255, 190, 110], "light.loxone_led_obyvacka": [255, 190, 110],
+    "light.lidl_rgb_viki": [120, 160, 255],
+    "light.spalna_ikea_tradfri": [255, 150, 80], "light.gu10_betka": [255, 150, 80], "light.gu10_filip": [255, 150, 80],
+  };
+  const entities = new Set();
+  for (const l of CONFIG.lights || []) {
+    if (l.entity) entities.add(l.entity);
+    (l.entities || []).forEach((e) => entities.add(e));
+  }
+
+  const card = document.createElement("dom-viewer-card");
+  document.getElementById("stage").appendChild(card);
+  card.setConfig(CONFIG);
+
+  const timeEl = document.getElementById("time");
+  const clockEl = document.getElementById("clock");
+  const lightsEl = document.getElementById("lights");
+
+  function update() {
+    const minutes = Number(timeEl.value);
+    clockEl.textContent = String(Math.floor(minutes / 60)).padStart(2, "0") + ":" + String(minutes % 60).padStart(2, "0");
+    const sp = sunPosition(dateAt(minutes));
+    const states = { "sun.sun": { state: sp.elevation > 0 ? "above_horizon" : "below_horizon", attributes: sp } };
+    for (const e of entities) {
+      const rgb = COLORS[e];
+      states[e] = { state: lightsEl.checked ? "on" : "off", attributes: lightsEl.checked ? { brightness: 255, ...(rgb ? { rgb_color: rgb } : {}) } : {} };
+    }
+    card.hass = { states, themes: {}, language: "en", callService() {} };
+  }
+
+  timeEl.addEventListener("input", update);
+  lightsEl.addEventListener("change", update);
+  document.getElementById("now").addEventListener("click", () => { timeEl.value = nowMinutes(); update(); });
+  timeEl.value = nowMinutes();
+  update();
+</script>
+</body>
+</html>

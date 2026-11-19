@@ -2,6 +2,10 @@
 
 A Lovelace card for Home Assistant that shows a 3D model of your house (`.glb` / `.gltf`, e.g. exported from SketchUp) and links it to your entities: room lights, night mode and shadows driven by the real sun, camera views.
 
+## Live demo
+
+https://filipjurik.github.io/glb-viewer/ – the card running on a model of a real house, with a time-of-day slider (sun position, night mode, shadows) and a switch for all lights. The demo page lives in `docs/`.
+
 ## Installation
 
 ### HACS
