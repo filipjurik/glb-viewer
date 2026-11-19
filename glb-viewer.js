@@ -1,65 +1,65 @@
 /*
  * glb-viewer – 3D model (GLB) viewer for Home Assistant Lovelace (Three.js)
- * Version: 0.3.40
+ * Version: 0.3.41
  * Rotation around the vertical axis (left/right) + limited tilt (up/down),
  * configurable from the visual card editor (path to GLB, rotation/zoom limits).
  * Three.js is loaded from a CDN on first use (see `three_url`).
  */
 
-const VERSION = "0.3.40";
+const VERSION = "0.3.41";
 
 // Base URL of the Three.js package; addons are loaded from <base>/examples/jsm/...
 const THREE_URL = "https://esm.sh/three@0.170.0";
 
 const DEFAULTS = {
   title: "",
-  width: "", // prazdne = cela sirka stlpca; napr. 600px alebo 80%
+  width: "", // empty = full column width; e.g. 600px or 80%
   height: "400px",
-  hide_border: false, // skryje okraj a tien karty
-  background: "", // prazdne = pozadie podla temy; napr. rgba(0, 0, 0, 0.5)
-  // orientacia modelu v stupnoch (otocenie samotneho modelu, nie kamery)
-  model_yaw: 0, // dokola vertikalnej osi
-  model_pitch: 0, // dopredu/dozadu
-  model_roll: 0, // nabok
-  flip_x: false, // zrkadlovo podla osi X
-  flip_z: false, // zrkadlovo podla osi Z
-  // naklon kamery nad horizontom v stupnoch: 0 = z urovne zeme, 90 = presne zhora
+  hide_border: false, // hides the card border and shadow
+  background: "", // empty = theme background; e.g. rgba(0, 0, 0, 0.5)
+  // model orientation in degrees (rotates the model itself, not the camera)
+  model_yaw: 0, // around the vertical axis
+  model_pitch: 0, // forward/backward
+  model_roll: 0, // sideways
+  flip_x: false, // mirrored along the X axis
+  flip_z: false, // mirrored along the Z axis
+  // camera tilt above the horizon in degrees: 0 = from ground level, 90 = straight from above
   min_tilt: 5,
   max_tilt: 70,
   initial_tilt: 25,
-  // horizontalny uhol; prazdne = neobmedzene
+  // horizontal angle; empty = unlimited
   min_azimuth: null,
   max_azimuth: null,
   initial_azimuth: 30,
-  // zoom v %: 100 = cely dom sa zmesti do karty, viac = blizsie, menej = dalej
+  // zoom in %: 100 = the whole house fits in the card, more = closer, less = farther
   min_zoom: 50,
   max_zoom: 200,
   initial_zoom: 100,
   auto_rotate: false,
   auto_rotate_delay: 3000,
   rotation_per_second: 20, // °/s
-  page_scroll: false, // dotyk: true = prst posuva stranku (vypne naklapanie dotykom)
+  page_scroll: false, // touch: true = finger scrolls the page (disables tilting by touch)
   exposure: 1,
   shadow_intensity: 1,
   environment: "neutral",
-  light_color: "", // CSS farba osvetlenia, napr. #ffd9a0; prazdne = vypnute
+  light_color: "", // CSS lighting color, e.g. #ffd9a0; empty = off
   night: "off", // off | on | sun | entity
   night_entity: "",
-  night_ambient: 0.15, // jas sceny v noci (0 az 1)
+  night_ambient: 0.15, // minimum scene brightness at night (0 to 1)
   show_light_markers: false,
-  home_label: "Cely dom", // nazov vychodzieho pohladu (tlacidlo)
-  view_entity: "", // input_select, ktoreho moznosti = nazvy pohladov
-  enable_pan: true, // posuvanie pohladu (prave tlacidlo, Shift+tah, dva prsty)
-  front_azimuth: 180, // svetova strana, na ktoru smeruje predna strana modelu (0 = sever, 90 = vychod, 180 = juh, 270 = zapad)
+  home_label: "Whole house", // name of the default view (button)
+  view_entity: "", // input_select whose options = view names
+  enable_pan: true, // panning (right button, Shift+drag, two fingers)
+  front_azimuth: 180, // compass direction the front of the model faces (0 = north, 90 = east, 180 = south, 270 = west)
   show_view_buttons: true,
-  show_reload_button: true, // tlacidlo na opatovne nacitanie modelu
-  show_play_button: true, // tlacidlo play/stop pre automaticke otacanie
-  window_glow: 1, // ziara okien pri zapnutom svetle (0 = vypnute)
-  lights_shadows: true, // tiene zo svetiel (centralny vypinac)
-  lights_test: false, // test: zapne vsetky svetla bez ohladu na entity
+  show_reload_button: true, // button to reload the model
+  show_play_button: true, // play/stop button for auto-rotate
+  window_glow: 1, // window glow when the light is on (0 = off)
+  lights_shadows: true, // shadows from lights (central switch)
+  lights_test: false, // test: turns on all lights regardless of entities
   view_duration: 1.5, // s
-  // hidden_materials: ["Strecha_dom"]
-  // views: [{ name, azimuth, tilt, zoom, target: [x, y, z], hide: [nazvy materialov], duration }]
+  // hidden_materials: ["roof_house"]
+  // views: [{ name, azimuth, tilt, zoom, target: [x, y, z], hide: [material names], duration }]
   // lights: [{ name, entity, position: [x, y, z], color: [r, g, b], intensity, distance, shadows,
   //            use_entity_color, use_brightness, force_on }]
   three_url: THREE_URL,
@@ -74,7 +74,7 @@ function solidColorCanvas(color) {
   canvas.width = 64;
   canvas.height = 32;
   const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "#ffffff"; // pri neplatnej farbe ostane biela
+  ctx.fillStyle = "#ffffff"; // stays white for an invalid color
   ctx.fillStyle = String(color);
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   return canvas;
@@ -101,7 +101,7 @@ function loadLibs(base) {
       }))
       .catch((e) => {
         libPromise = null;
-        throw new Error(`Nepodarilo sa nacitat Three.js z ${base}: ${e && e.message ? e.message : e}`);
+        throw new Error(`Failed to load Three.js from ${base}: ${e && e.message ? e.message : e}`);
       });
   }
   return libPromise;
@@ -128,20 +128,20 @@ class DomViewerCard extends HTMLElement {
     this._onCaptureEvent = this._onCaptureEvent.bind(this);
     this._onGotoEvent = this._onGotoEvent.bind(this);
     this._onReloadEvent = this._onReloadEvent.bind(this);
-    this._view = null; // nazov aktivneho pohladu (null = vychodzi)
+    this._view = null; // name of the active view (null = default)
     this._lastEntityView = null;
   }
 
   setConfig(config) {
     if (!config || !config.model) {
-      throw new Error("Chyba parameter 'model' (napr. /local/dom/dom.glb)");
+      throw new Error("Missing parameter 'model' (e.g. /local/dom/dom.glb)");
     }
     const cfgKey = JSON.stringify(config, (k, x) =>
       x && typeof x === "object" && !Array.isArray(x)
         ? Object.fromEntries(Object.keys(x).sort().map((key) => [key, x[key]]))
         : x
     );
-    if (this._cfgKey === cfgKey && this._wrap) return; // nezmenena konfiguracia: nic neprekreslovat
+    if (this._cfgKey === cfgKey && this._wrap) return; // unchanged configuration: nothing to redraw
     this._cfgKey = cfgKey;
     this._config = { ...DEFAULTS, ...config };
     if (!this._wrap) this._buildDom();
@@ -182,7 +182,7 @@ class DomViewerCard extends HTMLElement {
     if (this._pick) this._endPick();
     this._pause();
     clearTimeout(this._teardownTimer);
-    // ak sa karta nevrati do stranky, uvolni sa WebGL kontext
+    // if the card does not return to the page, the WebGL context is released
     this._teardownTimer = setTimeout(() => {
       if (!this.isConnected) this._dispose();
     }, 3000);
@@ -233,7 +233,7 @@ class DomViewerCard extends HTMLElement {
     this._bar.className = "bar";
     this._reloadBtn = document.createElement("button");
     this._reloadBtn.className = "reload";
-    this._reloadBtn.title = "Znovu nacitat model";
+    this._reloadBtn.title = "Reload model";
     this._reloadBtn.textContent = "↻";
     this._reloadBtn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -252,7 +252,7 @@ class DomViewerCard extends HTMLElement {
     this._wrap.appendChild(this._playBtn);
     this._card.appendChild(this._wrap);
     root.append(style, this._card);
-    this._showMessage("Nacitavam model...");
+    this._showMessage("Loading model...");
   }
 
   _showMessage(text, isError = false) {
@@ -403,7 +403,7 @@ class DomViewerCard extends HTMLElement {
       matState: null,
       shadowsStale: false,
     };
-    sun.shadow.autoUpdate = false; // staticka scena, tien staci vykreslit raz
+    sun.shadow.autoUpdate = false; // static scene, the shadow only needs to be rendered once
     sun.shadow.normalBias = 0.05;
     this._ctx = ctx;
 
@@ -426,7 +426,7 @@ class DomViewerCard extends HTMLElement {
       }
     });
 
-    // klik na model (vyber polohy svetla)
+    // click on the model (picking a light position)
     const el = renderer.domElement;
     el.addEventListener("pointerdown", (e) => {
       this._down = { x: e.clientX, y: e.clientY };
@@ -493,7 +493,7 @@ class DomViewerCard extends HTMLElement {
     this._stepTween(ctx, now);
     this._animate(ctx, dt);
     if (this._animateMaterials(ctx, dt)) this._dirty = true;
-    // automaticke otacanie s limitmi: po dosiahnuti limitu sa smer otacania otoci (tam a spat)
+    // auto-rotate with limits: the direction reverses at a limit (back and forth)
     if (ctx.controls.autoRotate && ctx.arBase) {
       const cn = ctx.controls;
       const th = cn.getAzimuthalAngle();
@@ -507,7 +507,7 @@ class DomViewerCard extends HTMLElement {
       }
     }
     const changed = ctx.controls.update(dt);
-    // posuvanie nesmie odviest pohlad mimo modelu
+    // panning must not move the view away from the model
     if (ctx.controls.enablePan && !ctx.tween && ctx.radius && ctx.center) {
       const tg = ctx.controls.target;
       const off = tg.clone().sub(ctx.center);
@@ -546,10 +546,10 @@ class DomViewerCard extends HTMLElement {
     const url = this._config.model;
     if (!ctx || ctx.loadedUrl === url) return;
     ctx.loadedUrl = url;
-    // pri opatovnom nacitani sa obchadza cache prehliadaca
+    // on reload the browser cache is bypassed
     const bust = (window.__glbViewerBust || {})[url];
     const fetchUrl = bust ? url + (url.includes("?") ? "&" : "?") + "_=" + bust : url;
-    this._showMessage("Nacitavam model...");
+    this._showMessage("Loading model...");
     new ctx.lib.GLTFLoader().load(
       fetchUrl,
       (gltf) => {
@@ -559,7 +559,7 @@ class DomViewerCard extends HTMLElement {
       undefined,
       () => {
         if (this._ctx !== ctx || ctx.loadedUrl !== url) return;
-        this._showError("Model sa nepodarilo nacitat: " + url);
+        this._showError("Failed to load the model: " + url);
       }
     );
   }
@@ -567,7 +567,7 @@ class DomViewerCard extends HTMLElement {
   _reloadModel() {
     const ctx = this._ctx;
     if (!ctx) return;
-    // cas znovunacitania je spolocny pre vsetky karty (aj nahlad v editore), aby ziadna nenacitala staru kopiu z cache
+    // the reload time is shared by all cards (including the editor preview) so none loads a stale copy from the cache
     window.__glbViewerBust = window.__glbViewerBust || {};
     window.__glbViewerBust[this._config.model] = Date.now();
     window.dispatchEvent(new CustomEvent("glb-viewer-reload", { detail: { model: this._config.model } }));
@@ -611,14 +611,14 @@ class DomViewerCard extends HTMLElement {
       o.receiveShadow = false;
       (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => {
         if (m.name) materials.add(m.name);
-        // sklo nema vrhat tien, aby svetlo mohlo prejst von oknom
+        // glass must not cast a shadow so light can pass out through the window
         if (m.userData.glb && m.userData.glb.glass) o.castShadow = false;
       });
     });
     this._names = { meshes: [...meshes], materials: [...materials], windows: winNames };
     console.info("[glb-viewer] meshes:", this._names.meshes, "materials:", this._names.materials);
 
-    // rozmery modelu v jeho vlastnych suradniciach (pre editor svetiel)
+    // model size in its own coordinates (for the light editor)
     const gr = ctx.group.rotation.clone();
     const gs = ctx.group.scale.clone();
     ctx.group.rotation.set(0, 0, 0);
@@ -635,8 +635,8 @@ class DomViewerCard extends HTMLElement {
     info.max = lb.max.toArray();
 
     this._applyShadowReceive();
-    const keepView = this._view; // aktivny pohlad sa pri znovunacitani modelu zachova
-    ctx.viewKey = null; // vynuti nastavenie pociatocneho pohladu
+    const keepView = this._view; // the active view is kept when the model is reloaded
+    ctx.viewKey = null; // forces the initial view to be applied
     this._hideMessage();
     if (this._reloadBtn) this._reloadBtn.classList.remove("spin");
     this._applyBounds();
@@ -661,7 +661,7 @@ class DomViewerCard extends HTMLElement {
 
     const si = Math.max(0, num(c.shadow_intensity, 1));
     ctx.ground.visible = si > 0;
-    ctx.sun.castShadow = true; // tien slnka dopada na model aj ked je tien na zemi vypnuty
+    ctx.sun.castShadow = true; // the sun shadow falls on the model even when the ground shadow is off
     ctx.ground.material.opacity = Math.min(1, 0.4 * si);
 
     this._syncLights();
@@ -682,7 +682,7 @@ class DomViewerCard extends HTMLElement {
     const ctx = this._ctx;
     const c = this._config;
     const rps = parseFloat(c.rotation_per_second);
-    // OrbitControls: autoRotateSpeed 1 = 6 °/s (pri update(deltaTime))
+    // OrbitControls: autoRotateSpeed 1 = 6 °/s (with update(deltaTime))
     ctx.arBase = (isNaN(rps) ? 20 : rps) / 6;
     ctx.controls.autoRotateSpeed = ctx.arBase * (ctx.arDir || 1);
     ctx.controls.enablePan = this._config.enable_pan !== false;
@@ -711,7 +711,7 @@ class DomViewerCard extends HTMLElement {
     ctx.hemi.visible = false;
 
     if (key.startsWith("c:")) {
-      // farba osvetlenia: jednofarebny environment
+      // lighting color: a uniform-color environment
       const tex = new THREE.CanvasTexture(solidColorCanvas(c.light_color));
       tex.mapping = THREE.EquirectangularReflectionMapping;
       tex.colorSpace = THREE.SRGBColorSpace;
@@ -752,11 +752,11 @@ class DomViewerCard extends HTMLElement {
           this._setEnv(ctx.pmrem.fromEquirectangular(tex));
           tex.dispose();
         })
-        .catch(() => console.warn("[glb-viewer] Prostredie sa nepodarilo nacitat:", e));
+        .catch(() => console.warn("[glb-viewer] Failed to load the environment:", e));
     }
   }
 
-  // orientacia, rozmery modelu, tien a limity kamery
+  // orientation, model size, shadow and camera limits
   _applyBounds() {
     const ctx = this._ctx;
     if (!ctx || !ctx.model) return;
@@ -818,7 +818,7 @@ class DomViewerCard extends HTMLElement {
     this._dirty = true;
   }
 
-  // vzdialenost, pri ktorej sa cely model zmesti do karty (= zoom 100 %)
+  // distance at which the whole model fits in the card (= zoom 100 %)
   _computeFit() {
     const ctx = this._ctx;
     const vfov = rad(ctx.camera.fov);
@@ -838,13 +838,13 @@ class DomViewerCard extends HTMLElement {
     controls.minDistance = (ctx.fit * 100) / zMax;
     controls.maxDistance = (ctx.fit * 100) / zMin;
 
-    // OrbitControls pouziva polarny uhol od zvislice (0 = zhora), preto 90 - naklon
+    // OrbitControls uses the polar angle from the vertical (0 = from above), hence 90 - tilt
     const tiltLo = Math.min(num(c.min_tilt, 5), num(c.max_tilt, 70));
     const tiltHi = Math.max(num(c.min_tilt, 5), num(c.max_tilt, 70));
     controls.minPolarAngle = rad(90 - tiltHi);
     controls.maxPolarAngle = rad(90 - tiltLo);
 
-    // limity azimutu sa v OrbitControls uplatnia len ak su zadane obe hodnoty
+    // azimuth limits apply in OrbitControls only when both values are given
     const hasMin = !isEmpty(c.min_azimuth);
     const hasMax = !isEmpty(c.max_azimuth);
     if (!hasMin && !hasMax) {
@@ -868,7 +868,7 @@ class DomViewerCard extends HTMLElement {
       }
     }
 
-    camera.near = Math.max(ctx.radius * 0.002, 0.01); // aby pri velkom priblizeni nerezalo blizke plochy
+    camera.near = Math.max(ctx.radius * 0.002, 0.01); // so near surfaces are not clipped at high zoom
     camera.far = ctx.fit * 10 + ctx.radius * 10;
     camera.updateProjectionMatrix();
   }
@@ -930,18 +930,18 @@ class DomViewerCard extends HTMLElement {
       const light = new THREE.PointLight(0xffffff, 0, dist, 2);
       light.position.set(num(l.position[0], 0), num(l.position[1], 0), num(l.position[2], 0));
 
-      // kazde svetlo s tienom je drahe, preto najviac 6
+      // every light with a shadow is expensive, hence at most 6
       const shadow = !!l.shadows && !l.glow_only && this._config.lights_shadows !== false;
       if (shadow) {
         shadowCount++;
-        light.castShadow = false; // zapina sa dynamicky: tien dostane najviac 6 prave zapnutych svetiel (podla poradia zapnutia)
+        light.castShadow = false; // switched on dynamically: at most 6 currently lit lights get a shadow (in order of turning on)
         light.shadow.mapSize.set(512, 512);
         light.shadow.bias = -0.002;
         light.shadow.normalBias = 0.04;
         light.shadow.camera.near = 0.1;
         light.shadow.camera.far = dist > 0 ? dist : 30;
-        light.shadow.radius = Math.max(0, num(l.softness, 3)); // rozmazanie okrajov tienov
-        light.shadow.autoUpdate = false; // dom je staticky, tien staci vykreslit raz
+        light.shadow.radius = Math.max(0, num(l.softness, 3)); // blurring of the shadow edges
+        light.shadow.autoUpdate = false; // the house is static, the shadow only needs to be rendered once
         light.shadow.needsUpdate = true;
       }
       ctx.group.add(light);
@@ -959,7 +959,7 @@ class DomViewerCard extends HTMLElement {
         light,
         marker,
         shadow,
-        base: l.glow_only ? 0 : Math.max(0, num(l.intensity, 30)), // glow_only: svetlo neosvetluje model, iba rozziari okno
+        base: l.glow_only ? 0 : Math.max(0, num(l.intensity, 30)), // glow_only: the light does not illuminate the model, it only makes the window glow
         cur: 0,
         target: 0,
         colorTarget: new THREE.Color(0xffd9a0),
@@ -996,7 +996,7 @@ class DomViewerCard extends HTMLElement {
       if (this._config.lights_test || l.force_on || !ents.length) {
         target = 1;
       } else {
-        // svetlo sa zapne, ked je zapnuta ktorakolvek entita; jas = najvyssi z zapnutych, farba z prvej zapnutej s farbou
+        // the light turns on when any entity is on; brightness = the highest of those on, color from the first one that is on and has a color
         let anyOn = false;
         let bright = null;
         for (const e of ents) {
@@ -1024,7 +1024,7 @@ class DomViewerCard extends HTMLElement {
     this._dirty = true;
   }
 
-  // tien (drahy) maju najviac 6 prave zapnute svetla; vyberaju sa v poradi, v akom sa zapli
+  // shadows (expensive) are given to at most 6 currently lit lights, chosen in the order they were turned on
   _assignShadows() {
     const ctx = this._ctx;
     if (!ctx) return;
@@ -1051,7 +1051,7 @@ class DomViewerCard extends HTMLElement {
     this._dirty = true;
   }
 
-  // tien zo svetiel dopadne len na plochy, ktore ho prijimaju (sklo nie)
+  // shadows from lights fall only on surfaces that receive them (not glass)
   _applyShadowReceive() {
     const ctx = this._ctx;
     if (!ctx || !ctx.model) return;
@@ -1090,7 +1090,7 @@ class DomViewerCard extends HTMLElement {
     if (c.night === "on") n = 1;
     else if (c.night === "sun") {
       const si = this._sunInfo();
-      if (si) n = 1 - Math.min(1, Math.max(0, (si.el + 4) / 12)); // plynuly sumrak: od -4 do 8 stupnov nad horizontom
+      if (si) n = 1 - Math.min(1, Math.max(0, (si.el + 4) / 12)); // smooth twilight: from -4 to 8 degrees above the horizon
       else n = states["sun.sun"] && states["sun.sun"].state === "below_horizon" ? 1 : 0;
     }
     else if (c.night === "entity" && c.night_entity) {
@@ -1106,7 +1106,7 @@ class DomViewerCard extends HTMLElement {
     const k = ctx.night;
     const amb = num(this._config.night_ambient, 0.15);
     const sk = ctx.sunK === undefined ? 1 : ctx.sunK;
-    // v noci je jas celej scene (okolite svetlo aj nebo) nasobeny hodnotou "jas v noci"; slnko v noci nesvieti
+    // at night the brightness of the whole scene (ambient light and sky) is multiplied by the "night brightness" value; the sun does not shine at night
     const lvl = 1 + (amb - 1) * k;
     ctx.scene.environmentIntensity = lvl * (0.8 + 0.2 * sk);
     ctx.hemi.intensity = 1.4 * lvl;
@@ -1128,7 +1128,7 @@ class DomViewerCard extends HTMLElement {
       ls.light.intensity = ls.base * ls.cur;
     }
     this._updateWindowGlow(ctx);
-    // plynuly pohyb slnka (tiene sa pri zmene polohy prepocitaju)
+    // smooth sun movement (shadows are recomputed when the position changes)
     if (ctx.sunTarget && ctx.sunDir && ctx.sunDir.distanceToSquared(ctx.sunTarget) > 1e-8) {
       ctx.sunDir.lerp(ctx.sunTarget, 1 - Math.exp(-dt * 3)).normalize();
       this._placeSun();
@@ -1160,7 +1160,7 @@ class DomViewerCard extends HTMLElement {
     if (!ctx || !ctx.model || !this.isConnected || d.model !== this._config.model) return;
     this._pick = { token: d.token };
     ctx.renderer.domElement.style.cursor = "crosshair";
-    this._showHint("Klikni na miesto v modeli (Esc = zrusit)");
+    this._showHint("Click a spot in the model (Esc = cancel)");
     this._updateMarkers();
   }
 
@@ -1193,7 +1193,7 @@ class DomViewerCard extends HTMLElement {
     rc.setFromCamera(ndc, ctx.camera);
     const hits = rc.intersectObject(ctx.model, true).filter((h) => {
       const m = Array.isArray(h.object.material) ? h.object.material[0] : h.object.material;
-      // cez sklo a skryte plochy sa kliká na to, co je za nimi
+      // clicks go through glass and hidden surfaces to whatever is behind them
       return !(m && ((m.userData.glb && m.userData.glb.glass) || m.visible === false));
     });
     if (!hits.length) return;
@@ -1205,7 +1205,7 @@ class DomViewerCard extends HTMLElement {
       .normalize();
     if (n.dot(rc.ray.direction) > 0) n.negate();
 
-    // podlaha -> svetlo 2 m nad nou, strop -> 0,3 m pod nim, stena -> 0,4 m od steny
+    // floor -> light 2 m above it, ceiling -> 0.3 m below it, wall -> 0.4 m from the wall
     const p = h.point.clone();
     if (n.y > 0.7) p.y += 2.0;
     else if (n.y < -0.7) p.y -= 0.3;
@@ -1225,7 +1225,7 @@ class DomViewerCard extends HTMLElement {
 
   _collectMaterials(root) {
     const ctx = this._ctx;
-    ctx.mats = new Map(); // nazov materialu -> [material]
+    ctx.mats = new Map(); // material name -> [material]
     root.traverse((o) => {
       if (!o.isMesh) return;
       (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => {
@@ -1243,7 +1243,7 @@ class DomViewerCard extends HTMLElement {
             },
           };
         }
-        const key = m.name || "(bez nazvu)";
+        const key = m.name || "(unnamed)";
         if (!ctx.mats.has(key)) ctx.mats.set(key, []);
         const arr = ctx.mats.get(key);
         if (!arr.includes(m)) arr.push(m);
@@ -1264,7 +1264,7 @@ class DomViewerCard extends HTMLElement {
     info.materials = list;
   }
 
-  // vlastne farby a priehladnost materialov z `material_colors`: [{ name, color: "#rrggbb", opacity: 0..1 }]
+  // custom material colors and transparency from `material_colors`: [{ name, color: "#rrggbb", opacity: 0..1 }]
   _applyMaterialColors() {
     const ctx = this._ctx;
     if (!ctx || !ctx.mats) return;
@@ -1284,7 +1284,7 @@ class DomViewerCard extends HTMLElement {
         g.depthWrite = g.opacity < 1 ? false : g.orig.depthWrite;
       });
     }
-    // nove hodnoty sa prenesu na aktualnu uroven viditelnosti (bez preskocenia prebiehajuceho prechodu)
+    // new values are carried over to the current visibility level (without interrupting a running transition)
     for (const [name, ms] of ctx.mats) {
       const st = ctx.matState && ctx.matState.get(name);
       if (st) this._setMaterialLevel(ms, st.cur);
@@ -1293,7 +1293,7 @@ class DomViewerCard extends HTMLElement {
     this._dirty = true;
   }
 
-  // skryje materialy z `hidden_materials` a z aktivneho pohladu (plynule, cez priehladnost)
+  // hides materials from `hidden_materials` and from the active view (smoothly, via transparency)
   _applyVisibility(instant = false, defer = false) {
     const ctx = this._ctx;
     if (!ctx || !ctx.mats) return;
@@ -1301,7 +1301,7 @@ class DomViewerCard extends HTMLElement {
     const hide = new Set((Array.isArray(c.hidden_materials) ? c.hidden_materials : []).map(String));
     const av = this._activeView();
     if (av && Array.isArray(av.hide)) av.hide.forEach((n) => hide.add(String(n)));
-    // priehladnost materialov v aktivnom pohlade: fade: [{ name, opacity: 0..1 }] (skryte plochy maju prednost)
+    // material transparency in the active view: fade: [{ name, opacity: 0..1 }] (hidden surfaces take precedence)
     const lvl = new Map();
     if (av && Array.isArray(av.fade)) {
       av.fade.forEach((x) => {
@@ -1309,7 +1309,7 @@ class DomViewerCard extends HTMLElement {
       });
     }
 
-    // priehladnost sa zapina len materialom, ktore sa niekedy skryvaju (inak by sa shader prekompiloval pri kazdej zmene)
+    // transparency is enabled only for materials that are ever hidden (otherwise the shader would be recompiled on every change)
     const fade = new Set(hide);
     this._views().forEach((v) => {
       (Array.isArray(v.hide) ? v.hide : []).forEach((n) => fade.add(String(n)));
@@ -1331,7 +1331,7 @@ class DomViewerCard extends HTMLElement {
       });
       const level = hide.has(name) ? 0 : lvl.has(name) ? lvl.get(name) : 1;
       if (defer && level > 0 && st.target === 0) {
-        // znovu zobrazenie (napr. strecha pri navrate do vychodzieho pohladu) pocka na koniec jazdy kamery
+        // showing again (e.g. the roof when returning to the default view) waits for the end of the camera move
         ctx.deferShow = true;
         continue;
       }
@@ -1344,7 +1344,7 @@ class DomViewerCard extends HTMLElement {
     this._dirty = true;
   }
 
-  // tiene sa pocitaju raz, so vsetkymi plochami viditelnymi (aj strechou); skryvanie ich uz nemeni
+  // shadows are computed once with all surfaces visible (including the roof); hiding does not change them
   _renderFullShadows(ctx) {
     ctx.shadowFull = false;
     if (!ctx.mats) return;
@@ -1382,7 +1382,7 @@ class DomViewerCard extends HTMLElement {
 
   /* ---------------- windows: glow of window glass when the room light is on ---------------- */
 
-  // okna: material s nazvom okno_ / sklo_ / window_ / glass_ + <miestnost>; (zaloha: rovnako pomenovany objekt v modeli)
+  // windows: a material named okno_ / sklo_ / window_ / glass_ + <room>; (fallback: an equally named object in the model)
   _collectWindows(root) {
     const ctx = this._ctx;
     const re = /^(?:okno|sklo|window|glass)_(.+)$/i;
@@ -1398,7 +1398,7 @@ class DomViewerCard extends HTMLElement {
       const id = r[1].toLowerCase();
       let mat = m;
       if (!own) {
-        // okno rozpoznane len podla objektu: dostane vlastnu kopiu materialu, aby svietilo samo
+        // window recognized only by its object: it gets its own copy of the material so it can glow on its own
         const ck = id + "|" + m.uuid;
         mat = clones.get(ck);
         if (!mat) {
@@ -1429,7 +1429,7 @@ class DomViewerCard extends HTMLElement {
   _updateWindowGlow(ctx) {
     if (!ctx.windows) return;
     const gain = Math.max(0, num(this._config.window_glow, 1));
-    const nf = 0.2 + 0.8 * (ctx.night || 0); // cez den slabsie, v noci naplno
+    const nf = 0.2 + 0.8 * (ctx.night || 0); // weaker by day, full at night
     let changed = false;
     for (const id of Object.keys(ctx.windows)) {
       let best = null;
@@ -1437,10 +1437,10 @@ class DomViewerCard extends HTMLElement {
         if (ls.wins && ls.wins.has(id) && (!best || ls.cur > best.cur)) best = ls;
       }
       const lvl = best ? best.cur * nf * gain : 0;
-      // ziara ma farbu materialu skla (nastavenu v materialoch); priehladnost materialu ju prirodzene zoslabi
+      // the glow uses the glass material color (set in the materials); the material transparency naturally weakens it
       for (const m of ctx.windows[id].mats) {
         if (!m.emissive || !m.color) continue;
-        // farba ziare: z entity svetla (ak je zapnute "window_entity_color"), inak farba materialu
+        // glow color: from the light entity (if "window_entity_color" is on), otherwise the material color
         const c = lvl > 0 ? (best && best.cfg.window_entity_color ? best.light.color : m.color) : null;
         const r = c ? c.r : 0, g = c ? c.g : 0, b = c ? c.b : 0;
         if (m.emissiveIntensity !== lvl || m.emissive.r !== r || m.emissive.g !== g || m.emissive.b !== b) {
@@ -1455,10 +1455,10 @@ class DomViewerCard extends HTMLElement {
 
   /* ---------------- real sun: direction, shadows, brightness ---------------- */
 
-  // azimut/elevacia z entity sun.sun (alebo `sun_entity`)
+  // azimuth/elevation from the sun.sun entity (or `sun_entity`)
   _sunInfo() {
     const c = this._config;
-    if (c.night !== "sun") return null; // slnko sa sleduje iba pri nocnom rezime "Podla slnka"
+    if (c.night !== "sun") return null; // the sun is tracked only in the "By the sun" night mode
     const st = this._hass && this._hass.states ? this._hass.states[c.sun_entity || "sun.sun"] : null;
     const a = st && st.attributes;
     if (!a) return null;
@@ -1472,22 +1472,22 @@ class DomViewerCard extends HTMLElement {
     if (!ctx || !ctx.center) return;
     const { THREE } = ctx;
     const info = this._sunInfo();
-    // azimut (svetova strana), na ktoru smeruje predna strana modelu (+z); 180 = predna strana na juh
+    // azimuth (compass direction) the front of the model (+z) faces; 180 = front faces south
     const c = this._config;
     const front = !isEmpty(c.front_azimuth) ? num(c.front_azimuth, 180) : 180 + num(c.north_offset, 0);
     const key = info ? `${info.az}|${info.el}|${front}` : "none";
     if (key === ctx.sunKey && !instant) return;
     ctx.sunKey = key;
-    // diagnostika v konzole (F12): preco slnko sleduje alebo nesleduje entitu
-    if (info) console.info("[glb-viewer] slnko: azimut", info.az, "elevacia", info.el, "predna strana", front);
+    // console diagnostics (F12): why the sun entity is or is not tracked
+    if (info) console.info("[glb-viewer] sun: azimuth", info.az, "elevacia", info.el, "front side", front);
     else {
       const eid = c.sun_entity || "sun.sun";
       const why =
-        c.night !== "sun" ? "noc nie je nastavena na Podla slnka"
-        : !this._hass || !this._hass.states ? "karta este nema hass"
-        : !this._hass.states[eid] ? "entita " + eid + " neexistuje"
-        : "entita nema atributy azimuth/elevation";
-      if (ctx.sunWhy !== why) console.warn("[glb-viewer] slnko sa nesleduje (pevne tiene):", why);
+        c.night !== "sun" ? "night mode is not set to By the sun"
+        : !this._hass || !this._hass.states ? "the card does not have hass yet"
+        : !this._hass.states[eid] ? "entity " + eid + " does not exist"
+        : "entity has no azimuth/elevation attributes";
+      if (ctx.sunWhy !== why) console.warn("[glb-viewer] sun is not tracked (fixed shadows):", why);
       ctx.sunWhy = why;
     }
     if (!info) {
@@ -1496,15 +1496,15 @@ class DomViewerCard extends HTMLElement {
       ctx.sunK = 1;
       ctx.sunColor = null;
     } else {
-      // predna strana = +z sceny, pravy bok = +x; uhol sa meria v smere hodinovych ruciciek zhora
+      // front = +z of the scene, right side = +x; the angle is measured clockwise from above
       const rel = rad(info.az - front);
       const el = rad(Math.max(info.el, 3));
       const local = new THREE.Vector3(-Math.sin(rel) * Math.cos(el), Math.sin(el), Math.cos(rel) * Math.cos(el));
-      // smer sa pocita v suradniciach sceny (nie modelu): otocenie/zrkadlenie modelu v nastaveniach sa neuplatni,
-      // predna strana = strana, ktoru vidis pri otoceni kamery 0 stupnov
+      // the direction is computed in scene coordinates (not the model's): the model rotation/mirroring settings do not apply,
+      // front = the side you see at camera rotation 0 degrees
       ctx.sunTarget = local.normalize();
       if (!ctx.sunDir || instant) ctx.sunDir = ctx.sunTarget.clone();
-      // jas podla vysky slnka a teplejsia farba blizko horizontu
+      // brightness by sun height and a warmer color near the horizon
       const sinE = Math.sin(rad(Math.max(info.el, 0)));
       ctx.sunK = 0.35 + 0.65 * Math.min(1, sinE / 0.8);
       const warm = Math.min(1, Math.max(0, (info.el - 3) / 25));
@@ -1540,7 +1540,7 @@ class DomViewerCard extends HTMLElement {
     return this._view ? this._views().find((v) => v.name === this._view) || null : null;
   }
 
-  // cielovy stav kamery pre pohlad (null = vychodzi pohlad na cely dom)
+  // target camera state for a view (null = default view of the whole house)
   _viewState(v) {
     const ctx = this._ctx;
     const { THREE } = ctx;
@@ -1606,8 +1606,8 @@ class DomViewerCard extends HTMLElement {
       this._placeCamera(to);
       this._armAutoRotate();
     } else {
-      // pocas presunu su limity otvorene, inak by ich nove (uzsie) limity okamzite "pritiahli" kameru a presun by na zaciatku poskocil;
-      // limity sa nastavia az po dojazde
+      // limits are open during the move, otherwise the new (narrower) limits would immediately "pull" the camera and the move would jump at the start;
+      // the limits are set only after the move ends
       this._openLimits();
       const secs = num(v ? v.duration : undefined, num(this._config.view_duration, 1.5));
       ctx.tween = {
@@ -1620,9 +1620,9 @@ class DomViewerCard extends HTMLElement {
     this._dirty = true;
   }
 
-  // automaticke otacanie: zapnute v konfiguracii a zaroven nezastavene tlacidlom v karte
+  // auto-rotate: enabled in the configuration and not stopped by the button on the card
   _autoOn() {
-    // v ineho pohlade ako vychodzom sa otacanie vypne (nastavuje sa this._view v _goToView)
+    // in a view other than the default, rotation is turned off (this._view is set in _goToView)
     return !!this._config.auto_rotate && !this._autoPaused && !this._view;
   }
 
@@ -1632,7 +1632,7 @@ class DomViewerCard extends HTMLElement {
     const show = !!this._config.auto_rotate && this._config.show_play_button !== false;
     b.style.display = show ? "" : "none";
     const icon = this._autoPaused ? "mdi:play" : "mdi:pause";
-    b.title = this._autoPaused ? "Spustit otacanie" : "Zastavit otacanie";
+    b.title = this._autoPaused ? "Start rotation" : "Stop rotation";
     if (b._icon.getAttribute("icon") !== icon) b._icon.setAttribute("icon", icon);
   }
 
@@ -1656,8 +1656,8 @@ class DomViewerCard extends HTMLElement {
     controls.maxAzimuthAngle = Infinity;
   }
 
-  // po skonceni jazdy (alebo jej prerusení) sa objavia materialy, ktorych zobrazenie sa odlozilo
-  // po uprave pohladu v editore sa karta (aj novo vytvorena) okamzite nastavi na upravovany pohlad
+  // after the move ends (or is interrupted), materials whose showing was deferred appear
+  // after a view is edited in the editor, the card (even a newly created one) immediately switches to the edited view
   _applyFocus() {
     const f = window.__glbViewerFocus;
     const ctx = this._ctx;
@@ -1681,7 +1681,7 @@ class DomViewerCard extends HTMLElement {
     const k = Math.max(0, Math.min((now - tw.t0) / tw.dur, 1));
     const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
     let dTheta = tw.to.theta - tw.from.theta;
-    dTheta = Math.atan2(Math.sin(dTheta), Math.cos(dTheta)); // najkratsia cesta okolo domu
+    dTheta = Math.atan2(Math.sin(dTheta), Math.cos(dTheta)); // shortest way around the house
     this._placeCamera({
       target: tw.from.target.clone().lerp(tw.to.target, e),
       theta: tw.from.theta + dTheta * e,
@@ -1729,7 +1729,7 @@ class DomViewerCard extends HTMLElement {
       });
       this._bar.appendChild(b);
     };
-    add(c.home_label || "Cely dom", null);
+    add(c.home_label || "Whole house", null);
     views.forEach((v) => add(v.name, v.name));
     if (!this._bar.isConnected) this._wrap.appendChild(this._bar);
   }
@@ -1739,14 +1739,14 @@ class DomViewerCard extends HTMLElement {
     if (c.view_entity && this._hass && String(c.view_entity).startsWith("input_select.")) {
       this._hass.callService("input_select", "select_option", {
         entity_id: c.view_entity,
-        option: name || c.home_label || "Cely dom",
+        option: name || c.home_label || "Whole house",
       });
-      this._lastEntityView = name || c.home_label || "Cely dom";
+      this._lastEntityView = name || c.home_label || "Whole house";
     }
     this._goToView(name);
   }
 
-  // pohlad podla stavu entity (input_select); nazvy volieb = nazvy pohladov
+  // view by entity state (input_select); option names = view names
   _syncViewEntity(instant = false) {
     const ctx = this._ctx;
     const c = this._config;
@@ -1760,7 +1760,7 @@ class DomViewerCard extends HTMLElement {
     this._goToView(name, { instant });
   }
 
-  // karta v dialogu editora (nahlad)
+  // card in the editor dialog (preview)
   _inEditor() {
     let el = this;
     while (el) {
@@ -1771,7 +1771,7 @@ class DomViewerCard extends HTMLElement {
     return false;
   }
 
-  // ktora karta ulozi pohlad: najprv karta v nahlade editora, inak ta, s ktorou sa naposledy manipulovalo
+  // which card saves the view: first the card in the editor preview, otherwise the one last interacted with
   _captureOwner(model) {
     const cards = [...(window.__glbViewerCards || [])].filter(
       (c) => c.isConnected && c._ctx && c._ctx.model && c._config && c._config.model === model
@@ -1815,67 +1815,67 @@ class DomViewerCard extends HTMLElement {
 /* ------------------------------------------------------------------ */
 
 const LABELS = {
-  model: "Cesta k GLB modelu (napr. /local/dom/dom.glb)",
-  title: "Nadpis (volitelne)",
-  width: "Sirka karty (napr. 600px alebo 80%, prazdne = cela sirka)",
-  height: "Vyska karty (napr. 400px)",
-  hide_border: "Skryt okraj a tien karty",
-  lights_shadows: "Tiene zo svetiel (vsetky svetla)",
-  lights_test: "Zapnut vsetky svetla (test)",
-  background: "Pozadie karty (napr. rgba(0, 0, 0, 0.5), prazdne = podla temy)",
-  model_yaw: "Otocenie modelu (okolo vertikalnej osi)",
-  model_pitch: "Sklopenie modelu dopredu/dozadu",
-  model_roll: "Sklopenie modelu nabok",
-  flip_x: "Zrkadlit podla osi X",
-  flip_z: "Zrkadlit podla osi Z",
-  min_tilt: "Naklon – minimum (najnizsi pohlad)",
-  max_tilt: "Naklon – maximum (najvyssi pohlad)",
-  initial_tilt: "Naklon – pociatocny",
-  min_azimuth: "Otacanie – minimum (°, prazdne = bez limitu)",
-  max_azimuth: "Otacanie – maximum (°, prazdne = bez limitu)",
-  initial_azimuth: "Otacanie – pociatocne",
-  min_zoom: "Zoom – najviac oddialene",
-  max_zoom: "Zoom – najviac priblizene",
-  initial_zoom: "Zoom – pociatocny",
-  auto_rotate: "Automaticke otacanie",
-  auto_rotate_delay: "Pauza po dotyku, kym sa znova zacne otacat",
-  rotation_per_second: "Rychlost auto-otacania (°/s)",
-  enable_pan: "Posuvanie pohladu (prave tlacidlo / Shift+tah / dva prsty)",
-  page_scroll: "Dotyk: prst posuva stranku (vypne naklapanie dotykom)",
-  exposure: "Expozicia",
-  shadow_intensity: "Intenzita tiena na zemi pod domom",
-  environment: "Prostredie (neutral / legacy / URL na .hdr alebo obrazok)",
-  light_color: "Farba osvetlenia (CSS, napr. #ffd9a0; prazdne = vypnute)",
-  night: "Noc (stmavenie sceny)",
-  night_entity: "Entita pre noc (zapnute alebo pod horizontom = noc)",
-  night_ambient: "Minimalny jas sceny v noci",
-  window_glow: "Ziara okien pri zapnutom svetle",
-  front_azimuth: "Predna strana domu smeruje na (°)",
-  show_light_markers: "Zobrazit polohy svetiel (pomocne body)",
-  home_label: "Nazov vychodzieho pohladu (tlacidlo)",
-  view_entity: "Entita input_select pre pohlady (volitelne)",
-  show_view_buttons: "Zobrazit tlacidla pohladov v karte",
-  show_reload_button: "Zobrazit tlacidlo na znovunacitanie modelu",
-  show_play_button: "Zobrazit tlacidlo play/stop pre automaticke otacanie",
-  view_duration: "Trvanie presunu kamery (s)",
+  model: "Path to the GLB model (e.g. /local/dom/dom.glb)",
+  title: "Title (optional)",
+  width: "Card width (e.g. 600px or 80%, empty = full width)",
+  height: "Card height (e.g. 400px)",
+  hide_border: "Hide card border and shadow",
+  lights_shadows: "Shadows from lights (all lights)",
+  lights_test: "Turn on all lights (test)",
+  background: "Card background (e.g. rgba(0, 0, 0, 0.5), empty = theme default)",
+  model_yaw: "Model rotation (around the vertical axis)",
+  model_pitch: "Model tilt forward/backward",
+  model_roll: "Model tilt sideways",
+  flip_x: "Mirror along the X axis",
+  flip_z: "Mirror along the Z axis",
+  min_tilt: "Tilt – minimum (lowest view)",
+  max_tilt: "Tilt – maximum (highest view)",
+  initial_tilt: "Tilt – initial",
+  min_azimuth: "Rotation – minimum (°, empty = no limit)",
+  max_azimuth: "Rotation – maximum (°, empty = no limit)",
+  initial_azimuth: "Rotation – initial",
+  min_zoom: "Zoom – farthest",
+  max_zoom: "Zoom – closest",
+  initial_zoom: "Zoom – initial",
+  auto_rotate: "Auto-rotate",
+  auto_rotate_delay: "Pause after touch before rotation resumes",
+  rotation_per_second: "Auto-rotate speed (°/s)",
+  enable_pan: "Panning (right button / Shift+drag / two fingers)",
+  page_scroll: "Touch: finger scrolls the page (disables tilting by touch)",
+  exposure: "Exposure",
+  shadow_intensity: "Intensity of the ground shadow under the house",
+  environment: "Environment (neutral / legacy / URL of an .hdr or image)",
+  light_color: "Light color (CSS, e.g. #ffd9a0; empty = off)",
+  night: "Night (scene darkening)",
+  night_entity: "Night entity (on or below the horizon = night)",
+  night_ambient: "Minimum scene brightness at night",
+  window_glow: "Window glow when the light is on",
+  front_azimuth: "The front of the house faces (°)",
+  show_light_markers: "Show light positions (helper points)",
+  home_label: "Name of the default view (button)",
+  view_entity: "input_select entity for views (optional)",
+  show_view_buttons: "Show view buttons on the card",
+  show_reload_button: "Show the model reload button",
+  show_play_button: "Show the play/stop button for auto-rotate",
+  view_duration: "Camera transition duration (s)",
 };
 
 const HELPERS = {
-  model_yaw: "Ak je dom otoceny na zlu stranu, nastav tu 90, 180 alebo -90",
-  flip_x: "Ak je dom zrkadlovo obrateny, skus X, ak nepomoze, tak Z",
-  model_pitch: "Pouzi, ak dom lezi na boku alebo je prevrateny",
-  min_tilt: "0° = z urovne zeme, 90° = presne zhora",
-  max_tilt: "Vyssia hodnota = pohlad viac zhora",
-  min_zoom: "100 % = cely dom sa zmesti do karty, nizsie = dalej",
-  max_zoom: "Vyssia hodnota = viac priblizene (200 % = dvojnasobne)",
-  initial_zoom: "100 % = cely dom sa zmesti do karty",
-  light_color: "Ma prednost pred polom Prostredie. Tmavsia farba = tmavsi model",
-  night: "V noci sa scena stmavi, aby bolo svetlo z miestnosti vidiet",
-  night_ambient: "Jas nikdy neklesne pod tuto hodnotu, nech je vonku akakolvek tma: 0 = uplna tma, 1 = ako cez den",
-  front_azimuth: "Svetova strana, kam sa pozera strana domu, ktoru vidis v pociatocnom pohlade (otocenie kamery 0°): 0 = sever, 90 = vychod, 180 = juh, 270 = zapad",
-  show_light_markers: "Zlte gule v mieste svetiel, vidiet aj cez steny",
+  model_yaw: "If the house is turned the wrong way, set 90, 180 or -90 here",
+  flip_x: "If the house is mirrored, try X; if that does not help, try Z",
+  model_pitch: "Use only if the house is lying on its side or upside down",
+  min_tilt: "0° = from ground level, 90° = straight from above",
+  max_tilt: "Higher value = view more from above",
+  min_zoom: "100 % = the whole house fits in the card, lower = farther away",
+  max_zoom: "Higher value = closer (200 % = twice as close)",
+  initial_zoom: "100 % = the whole house fits in the card",
+  light_color: "Takes precedence over the Environment field. Darker color = darker model",
+  night: "At night the scene darkens so the light from the rooms is visible",
+  night_ambient: "Brightness never drops below this value, however dark it is outside: 0 = complete darkness, 1 = same as daytime",
+  front_azimuth: "Compass direction that the side of the house seen in the initial view (camera rotation 0°) faces: 0 = north, 90 = east, 180 = south, 270 = west",
+  show_light_markers: "Yellow spheres at the light positions, visible through walls",
   view_entity:
-    "Moznosti input_select musia mat rovnake nazvy ako pohlady (a nazov vychodzieho pohladu). Tlacidla v karte ho nastavuju a karta ho nasleduje.",
+    "The input_select options must have the same names as the views (and the name of the default view). The buttons on the card set it and the card follows it.",
 };
 
 const deg = (min, max, mode = "slider") => ({
@@ -1903,7 +1903,7 @@ const SCHEMA = [
     name: "",
     type: "expandable",
     flatten: true,
-    title: "Orientacia modelu",
+    title: "Model orientation",
     schema: [
       { name: "model_yaw", selector: deg(-180, 180) },
       { name: "model_pitch", selector: deg(-180, 180) },
@@ -1916,7 +1916,7 @@ const SCHEMA = [
     name: "",
     type: "expandable",
     flatten: true,
-    title: "Naklon (os Y)",
+    title: "Tilt (Y axis)",
     schema: [
       { name: "min_tilt", selector: deg(0, 90) },
       { name: "max_tilt", selector: deg(0, 90) },
@@ -1927,7 +1927,7 @@ const SCHEMA = [
     name: "",
     type: "expandable",
     flatten: true,
-    title: "Otacanie (os X)",
+    title: "Rotation (X axis)",
     schema: [
       { name: "min_azimuth", selector: deg(-360, 360, "box") },
       { name: "max_azimuth", selector: deg(-360, 360, "box") },
@@ -1964,7 +1964,7 @@ const SCHEMA = [
     name: "",
     type: "expandable",
     flatten: true,
-    title: "Vzhlad",
+    title: "Appearance",
     schema: [
       { name: "exposure", selector: { number: { min: 0, max: 4, step: 0.1, mode: "slider" } } },
       {
@@ -1979,7 +1979,7 @@ const SCHEMA = [
     name: "",
     type: "expandable",
     flatten: true,
-    title: "Noc a pomocne body svetiel",
+    title: "Night and light helper points",
     schema: [
       {
         name: "night",
@@ -1987,10 +1987,10 @@ const SCHEMA = [
           select: {
             mode: "dropdown",
             options: [
-              { value: "off", label: "Vypnute (vzdy den)" },
-              { value: "on", label: "Vzdy noc" },
-              { value: "sun", label: "Podla slnka (sun.sun) - tiene a jas sleduju skutocne slnko" },
-              { value: "entity", label: "Podla entity" },
+              { value: "off", label: "Off (always day)" },
+              { value: "on", label: "Always night" },
+              { value: "sun", label: "By the sun (sun.sun) - shadows and brightness follow the real sun" },
+              { value: "entity", label: "By entity" },
             ],
           },
         },
@@ -2006,7 +2006,7 @@ const SCHEMA = [
     name: "",
     type: "expandable",
     flatten: true,
-    title: "Nastavenie pohladov kamery",
+    title: "Camera view settings",
     schema: [
       { name: "home_label", selector: { text: {} } },
       { name: "view_entity", selector: { entity: { domain: "input_select" } } },
@@ -2024,31 +2024,31 @@ const SCHEMA = [
 /* ---------------- lights ---------------- */
 
 const LIGHT_LABELS = {
-  window_entity_color: "Okno ziari farbou entity (inak farbou materialu)",
-  glow_only: "Iba ziara okna (svetlo neosvetluje model)",
-  disabled: "Svetlo vypnute (nepouzije sa, ostane ulozene)",
-  windows: "Okna, ktore pri tomto svetle svietia (napr. kuchyna, obyvacka)",
-  name: "Nazov",
-  entities: "Entity (svetlo sa zapne, ked je zapnuta ktorakolvek)",
-  x: "Poloha X (m)",
-  y: "Poloha Y – vyska (m)",
-  z: "Poloha Z (m)",
-  color: "Farba svetla",
-  intensity: "Intenzita",
-  distance: "Dosah (m, 0 = neobmedzeny)",
-  shadows: "Tiene (steny zastavia svetlo, sklo ho prepusti)",
-  softness: "Jemnost tienov (rozmazanie okrajov luca vonku)",
-  use_entity_color: "Pouzit farbu z entity",
-  use_brightness: "Pouzit jas z entity",
+  window_entity_color: "Window glows in the entity color (otherwise in the material color)",
+  glow_only: "Window glow only (the light does not illuminate the model)",
+  disabled: "Light disabled (not used, stays saved)",
+  windows: "Windows that glow with this light (e.g. kitchen, livingroom)",
+  name: "Name",
+  entities: "Entities (the light turns on when any of them is on)",
+  x: "Position X (m)",
+  y: "Position Y – height (m)",
+  z: "Position Z (m)",
+  color: "Light color",
+  intensity: "Intensity",
+  distance: "Range (m, 0 = unlimited)",
+  shadows: "Shadows (walls block the light, glass lets it through)",
+  softness: "Shadow softness (blurs the shadow edges outdoors)",
+  use_entity_color: "Use color from the entity",
+  use_brightness: "Use brightness from the entity",
 };
 
 const LIGHT_HELPERS = {
-  entities: "Prazdne = svetlo je vzdy zapnute",
-  x: "Suradnice modelu v metroch",
-  intensity: "Tipicka miestnost 20 az 60",
-  shadows: "Narocne na vykon, odporucane najviac 3 svetla s tienmi",
-  softness: "Plati len s tienmi. Vyssie cislo = mensie ostre okraje, pri velkych hodnotach moze byt vidiet pruhovanie",
-  use_entity_color: "Ak ma entita farbu (rgb_color), pouzije sa namiesto farby nizsie",
+  entities: "Empty = the light is always on",
+  x: "Model coordinates in meters",
+  intensity: "Typical room 20 to 60",
+  shadows: "Performance-heavy, at most 3 lights with shadows recommended",
+  softness: "Applies only with shadows. Higher number = softer edges; large values may show banding",
+  use_entity_color: "If the entity has a color (rgb_color), it is used instead of the color below",
 };
 
 const coord = { number: { mode: "box", step: 0.05, unit_of_measurement: "m" } };
@@ -2149,19 +2149,19 @@ function formToLight(f) {
 /* ---------------- camera views ---------------- */
 
 const VIEW_LABELS = {
-  name: "Nazov pohladu (tlacidlo)",
-  azimuth: "Otocenie kamery (°)",
-  tilt: "Naklon kamery (°)",
+  name: "View name (button)",
+  azimuth: "Camera rotation (°)",
+  tilt: "Camera tilt (°)",
   zoom: "Zoom",
-  x: "Ciel X (m)",
-  y: "Ciel Y (m)",
-  z: "Ciel Z (m)",
-  duration: "Trvanie presunu (s, 0 = predvolene)",
+  x: "Target X (m)",
+  y: "Target Y (m)",
+  z: "Target Z (m)",
+  duration: "Transition duration (s, 0 = default)",
 };
 
 const VIEW_HELPERS = {
-  azimuth: "Najjednoduchsie: nastav kameru v nahlade a klikni na Ulozit aktualny pohlad kamery",
-  x: "Bod v modeli, na ktory kamera miri (suradnice modelu)",
+  azimuth: "Easiest: set the camera in the preview and click Save current camera view",
+  x: "Point in the model the camera looks at (model coordinates)",
 };
 
 const VIEW_SCHEMA = [
@@ -2254,7 +2254,7 @@ const EDITOR_CSS = `
 const MAT_PREFIXES = ["wall_", "roof_", "window_", "glass_", "color_", "floor_", "door_"];
 const ARRAY_KEYS = ["lights", "views", "hidden_materials", "material_colors"];
 
-// JSON s utriedenymi klucmi, aby poradie klucov nerozhodovalo o rovnosti
+// JSON with sorted keys so key order does not affect equality
 const stable = (v) =>
   JSON.stringify(v, (k, x) =>
     x && typeof x === "object" && !Array.isArray(x)
@@ -2296,8 +2296,8 @@ class DomViewerCardEditor extends HTMLElement {
   }
 
   setConfig(config) {
-    // zmenu, ktoru sme poslali sami, netreba znova nacitat
-    // (HA moze vratit aj starsiu odoslanu verziu, preto sa pamata niekolko poslednych)
+    // a change we sent ourselves does not need to be loaded again
+    // (HA may also return an older sent version, so several of the latest are remembered)
     if (this._emittedList && this._emittedList.includes(stable(config))) {
       this._config = config;
       return;
@@ -2317,7 +2317,7 @@ class DomViewerCardEditor extends HTMLElement {
       this._render();
       return;
     }
-    // editor uz existuje: aktualizuju sa len zmenene hodnoty, aby sa nestratil kurzor v poli
+    // the editor already exists: only changed values are updated so the cursor in a field is not lost
     this._syncFromConfig(rest, newLights, newViews, newHidden, newColors);
   }
 
@@ -2337,7 +2337,7 @@ class DomViewerCardEditor extends HTMLElement {
       });
     }
 
-    if (this._fadeTimer) views = this._views; // rozpracovane zmeny priehladnosti sa neprepisu
+    if (this._fadeTimer) views = this._views; // in-progress transparency changes are not overwritten
     const hideChanged = views.some(
       (v, i) =>
         !this._views[i] ||
@@ -2405,35 +2405,35 @@ class DomViewerCardEditor extends HTMLElement {
     this._form.computeHelper = (s) => HELPERS[s.name] || "";
     this._form.schema = SCHEMA;
     this._form.hass = this._hass;
-    // vo formulari su vidiet predvolene hodnoty, ukladaju sa len tie, ktore sa lisia
+    // the form shows default values, only those that differ are saved
     this._form.data = { ...DEFAULTS, ...this._main };
     this._form.addEventListener("value-changed", (ev) => this._mainChanged(ev));
     this.appendChild(this._form);
 
-    // --- svetla ---
+    // --- lights ---
     const lightsSec = this._section(
-      "Svetla",
-      "Poloha je v metroch v suradniciach modelu. Tlacidlom „Vybrat polohu“ klikni v nahlade na miesto v modeli."
+      "Lights",
+      "Position is in meters in model coordinates. Use “Pick position” and click a spot in the model in the preview."
     );
     this._list = document.createElement("div");
     this._warn = document.createElement("div");
     this._warn.className = "warn";
     const addLight = document.createElement("button");
     addLight.className = "primary";
-    addLight.textContent = "Pridaj svetlo";
+    addLight.textContent = "Add light";
     addLight.addEventListener("click", () => this._addLight());
     lightsSec.append(this._list, this._warn, addLight);
     this.appendChild(lightsSec);
 
-    // --- ktore materialy sa maju zobrazovat v zoznamoch (podla predpony nazvu) ---
+    // --- which materials are shown in the lists (by name prefix) ---
     const lsGet = (k) => { try { return window.localStorage.getItem(k); } catch (e) { return null; } };
-    const lsSet = (k, v) => { try { window.localStorage.setItem(k, v); } catch (e) { /* nic */ } };
+    const lsSet = (k, v) => { try { window.localStorage.setItem(k, v); } catch (e) { /* nothing */ } };
     this._show = {};
     for (const pf of MAT_PREFIXES) this._show[pf] = lsGet("glb-viewer-show-" + pf) !== "0";
-    this._show.other = lsGet("glb-viewer-show-other") === "1"; // ostatne materialy su predvolene skryte
+    this._show.other = lsGet("glb-viewer-show-other") === "1"; // other materials are hidden by default
     const bar = this._section(
-      "Zoznam materialov",
-      "V zoznamoch (skryte plochy, farby, pohlady) sa zobrazia materialy, ktorych nazov zacina vybranou predponou. Pomenuj materialy v modeli napr. wall_obyvacka, roof_dom, window_kuchyna."
+      "Material list",
+      "The lists (hidden surfaces, colors, views) show materials whose name starts with the selected prefix. Name materials in the model e.g. wall_livingroom, roof_house, window_kitchen."
     );
     const mkToggle = (text, pf) => {
       const lab = document.createElement("label");
@@ -2456,42 +2456,42 @@ class DomViewerCardEditor extends HTMLElement {
       return lab;
     };
     for (const pf of MAT_PREFIXES) bar.appendChild(mkToggle(pf + "*", pf));
-    bar.appendChild(mkToggle("ostatne (bez predpony)", "other"));
+    bar.appendChild(mkToggle("other (no prefix)", "other"));
     this.appendChild(bar);
 
-    // --- skryte plochy ---
+    // --- hidden surfaces ---
     this._hiddenSec = this._section(
-      "Skryte plochy",
-      "Materialy sa nacitaju zo suboru modelu. Zaskrtnute su stale skryte (napr. strecha). Skrytie len pri urcitom pohlade nastavis nizsie v pohladoch."
+      "Hidden surfaces",
+      "Materials are read from the model file. Ticked ones are always hidden (e.g. the roof). To hide something only in a particular view, use the views below."
     );
     this._hiddenBox = document.createElement("div");
     this._hiddenSec.appendChild(this._hiddenBox);
     this.appendChild(this._hiddenSec);
 
-    // --- farby materialov ---
+    // --- material colors ---
     this._colorSec = this._section(
-      "Farby a priehladnost materialov",
-      "Kazdy material ma vlastnu farbu a priehladnost. Zmenene su zvyraznene; tlacidlo „Povodna“ vrati hodnoty zo suboru."
+      "Material colors and transparency",
+      "Every material has its own color and transparency. Changed ones are highlighted; the “Original” button restores the values from the file."
     );
     this._colorBox = document.createElement("div");
     this._colorSec.appendChild(this._colorBox);
     this.appendChild(this._colorSec);
 
-    // --- pohlady ---
+    // --- views ---
     const viewsSec = this._section(
-      "Pohlady kamery",
-      "Kazdy pohlad ma nazov, polohu kamery a zoznam skrytych materialov. V karte sa zobrazi ako tlacidlo."
+      "Camera views",
+      "Every view has a name, a camera position and a list of hidden materials. It appears as a button on the card."
     );
     const home = document.createElement("div");
     home.className = "row";
     const homeBtn = document.createElement("button");
-    homeBtn.textContent = "Zobrazit vychodzi pohlad";
+    homeBtn.textContent = "Show the default view";
     homeBtn.addEventListener("click", () => this._gotoView(null));
     home.appendChild(homeBtn);
     this._viewList = document.createElement("div");
     const addView = document.createElement("button");
     addView.className = "primary";
-    addView.textContent = "Pridaj pohlad";
+    addView.textContent = "Add view";
     addView.addEventListener("click", () => this._addView());
     viewsSec.append(home, this._viewList, addView);
     this.appendChild(viewsSec);
@@ -2502,7 +2502,7 @@ class DomViewerCardEditor extends HTMLElement {
     this._renderViews();
   }
 
-  // zoznam materialov podla zvolenych predpon (bez ohladu na velkost pismen)
+  // material list by the chosen prefixes (case-insensitive)
   _visibleMats(info) {
     const all = info && Array.isArray(info.materials) ? info.materials : [];
     const show = this._show || {};
@@ -2517,7 +2517,7 @@ class DomViewerCardEditor extends HTMLElement {
     return m.name;
   }
 
-  // farba + priehladnost pre kazdy material zo suboru
+  // color + transparency for every material from the file
   _renderColors() {
     this._colorBox.innerHTML = "";
     const info = this._info();
@@ -2525,7 +2525,7 @@ class DomViewerCardEditor extends HTMLElement {
     box.className = "cols";
     if (!info || !Array.isArray(info.materials) || !info.materials.length) {
       const p = document.createElement("p");
-      p.textContent = "Materialy sa zobrazia po nacitani modelu v nahlade.";
+      p.textContent = "Materials appear after the model loads in the preview.";
       this._colorBox.appendChild(p);
       return;
     }
@@ -2552,7 +2552,7 @@ class DomViewerCardEditor extends HTMLElement {
       row.className = "col";
       const nm = document.createElement("span");
       nm.className = "nm";
-      nm.textContent = this._matLabel(m) + (m.glass ? " (priehladne)" : "");
+      nm.textContent = this._matLabel(m) + (m.glass ? " (transparent)" : "");
       const color = document.createElement("input");
       color.type = "color";
       const hex6 = (v) => (/^#[0-9a-f]{6}$/i.test(String(v)) ? String(v).toLowerCase() : null);
@@ -2565,7 +2565,7 @@ class DomViewerCardEditor extends HTMLElement {
       const pc = document.createElement("span");
       pc.className = "pc";
       const reset = document.createElement("button");
-      reset.textContent = "Povodna";
+      reset.textContent = "Original";
       const refresh = () => {
         const ent = entry(m.name);
         row.classList.toggle("changed", !!ent);
@@ -2600,15 +2600,15 @@ class DomViewerCardEditor extends HTMLElement {
     }
     this._colorBox.appendChild(box);
 
-    // nastavenia pre materialy, ktore sa v nacitanom modeli uz nenachadzaju (napr. po premenovani v SketchUp)
+    // settings for materials that are no longer in the loaded model (e.g. after renaming in SketchUp)
     const names = new Set(info.materials.map((m) => m.name));
     const orphans = this._colors.filter((c) => c && !names.has(String(c.name)));
     if (orphans.length) {
       const w = document.createElement("div");
       w.className = "warn";
-      w.textContent = "Nastavene, ale v modeli sa nenachadzaju: " + orphans.map((c) => c.name).join(", ");
+      w.textContent = "Set, but not present in the model: " + orphans.map((c) => c.name).join(", ");
       const b = document.createElement("button");
-      b.textContent = "Odstranit";
+      b.textContent = "Remove";
       b.style.marginLeft = "8px";
       b.addEventListener("click", () => {
         this._colors = this._colors.filter((c) => c && names.has(String(c.name)));
@@ -2620,7 +2620,7 @@ class DomViewerCardEditor extends HTMLElement {
     }
   }
 
-  // vyber materialov so vzorkou farby; zoznam sa cita zo suboru modelu
+  // material picker with a color swatch; the list is read from the model file
   _matPicker(selected, onChange) {
     const box = document.createElement("div");
     box.className = "mats";
@@ -2632,7 +2632,7 @@ class DomViewerCardEditor extends HTMLElement {
       if (!allMats.some((m) => m.name === n)) mats.push({ name: n, color: null, missing: true });
     });
     if (!mats.length) {
-      box.textContent = "Materialy sa zobrazia po nacitani modelu v nahlade.";
+      box.textContent = "Materials appear after the model loads in the preview.";
       return box;
     }
     mats.forEach((m) => {
@@ -2643,7 +2643,7 @@ class DomViewerCardEditor extends HTMLElement {
       cb.addEventListener("change", () => {
         if (cb.checked) sel.add(m.name);
         else sel.delete(m.name);
-        // vyber ostane aj pre riadky, ktore su prave skryte prepinacmi
+        // the selection is kept also for rows currently hidden by the toggles
         onChange([...sel]);
       });
       const sw = document.createElement("span");
@@ -2656,7 +2656,7 @@ class DomViewerCardEditor extends HTMLElement {
       if (m.glass || m.missing) {
         const tag = document.createElement("span");
         tag.className = "tag";
-        tag.textContent = m.missing ? "(nie je v modeli)" : "(priehladne)";
+        tag.textContent = m.missing ? "(not in the model)" : "(transparent)";
         row.appendChild(tag);
       }
       box.appendChild(row);
@@ -2675,8 +2675,8 @@ class DomViewerCardEditor extends HTMLElement {
   }
 
   _lightTitle(l, i) {
-    const t = l.name || l.entity || (Array.isArray(l.entities) && l.entities[0]) || `Svetlo ${i + 1}`;
-    return l.disabled ? t + " (vypnute)" : t;
+    const t = l.name || l.entity || (Array.isArray(l.entities) && l.entities[0]) || `Light ${i + 1}`;
+    return l.disabled ? t + " (disabled)" : t;
   }
 
   _renderLights(openIdx) {
@@ -2710,11 +2710,11 @@ class DomViewerCardEditor extends HTMLElement {
       const row = document.createElement("div");
       row.className = "row";
       const pick = document.createElement("button");
-      pick.textContent = "Vybrat polohu klikom v modeli";
+      pick.textContent = "Pick position by clicking in the model";
       pick.addEventListener("click", () => this._togglePick(i));
       const del = document.createElement("button");
       del.className = "danger";
-      del.textContent = "Odstranit svetlo";
+      del.textContent = "Remove light";
       del.addEventListener("click", () => {
         this._cancelPick();
         this._lights.splice(i, 1);
@@ -2742,7 +2742,7 @@ class DomViewerCardEditor extends HTMLElement {
       const det = document.createElement("details");
       det.open = openIdx === i || !!wasOpen[i];
       const sum = document.createElement("summary");
-      sum.textContent = v.name || `Pohlad ${i + 1}`;
+      sum.textContent = v.name || `View ${i + 1}`;
       det.appendChild(sum);
 
       const form = document.createElement("ha-form");
@@ -2755,14 +2755,14 @@ class DomViewerCardEditor extends HTMLElement {
         ev.stopPropagation();
         form.data = ev.detail.value;
         this._views[i] = formToView(ev.detail.value, this._views[i]);
-        sum.textContent = this._views[i].name || `Pohlad ${i + 1}`;
+        sum.textContent = this._views[i].name || `View ${i + 1}`;
         this._focusView(i);
         this._emit();
       });
       det.appendChild(form);
 
       const h4 = document.createElement("h4");
-      h4.textContent = "Skryt pri tomto pohlade";
+      h4.textContent = "Hide in this view";
       det.appendChild(h4);
       det.appendChild(
         this._matPicker(v.hide, (names) => {
@@ -2776,21 +2776,21 @@ class DomViewerCardEditor extends HTMLElement {
       );
 
       const h4b = document.createElement("h4");
-      h4b.textContent = "Priehladnost pri tomto pohlade";
+      h4b.textContent = "Transparency in this view";
       det.appendChild(h4b);
       det.appendChild(this._fadeRows(i, info));
 
       const row = document.createElement("div");
       row.className = "row";
       const cap = document.createElement("button");
-      cap.textContent = "Ulozit aktualny pohlad kamery";
+      cap.textContent = "Save current camera view";
       cap.addEventListener("click", () => this._capture(i));
       const go = document.createElement("button");
-      go.textContent = "Prejst na pohlad";
+      go.textContent = "Go to view";
       go.addEventListener("click", () => this._gotoView(this._views[i].name));
       const del = document.createElement("button");
       del.className = "danger";
-      del.textContent = "Odstranit pohlad";
+      del.textContent = "Remove view";
       del.addEventListener("click", () => {
         this._views.splice(i, 1);
         this._renderViews();
@@ -2809,7 +2809,7 @@ class DomViewerCardEditor extends HTMLElement {
     const shadowCount = this._lights.filter((l) => l.shadows).length;
     this._warn.textContent =
       shadowCount > 3
-        ? `Svetla s tienmi: ${shadowCount}. Na tablete moze byt pomale, odporucane su najviac 3.`
+        ? `Lights with shadows: ${shadowCount}. This may be slow on a tablet; at most 3 are recommended.`
         : "";
   }
 
@@ -2854,7 +2854,7 @@ class DomViewerCardEditor extends HTMLElement {
     const cx = hasBounds(info) ? centerOf(info)[0] : 0;
     const cz = hasBounds(info) ? centerOf(info)[2] : 0;
     this._lights.push({
-      name: `Svetlo ${this._lights.length + 1}`,
+      name: `Light ${this._lights.length + 1}`,
       position: [round2(cx), 2.2, round2(cz)],
       color: DEFAULT_LIGHT_COLOR.slice(),
       intensity: 30,
@@ -2868,7 +2868,7 @@ class DomViewerCardEditor extends HTMLElement {
     const info = this._info();
     const c = hasBounds(info) ? centerOf(info) : [0, 0, 0];
     this._views.push({
-      name: `Pohlad ${this._views.length + 1}`,
+      name: `View ${this._views.length + 1}`,
       azimuth: 30,
       tilt: 60,
       zoom: 150,
@@ -2883,7 +2883,7 @@ class DomViewerCardEditor extends HTMLElement {
   _onInfo(ev) {
     const d = ev.detail || {};
     if (!this._main || d.model !== this._main.model || !this._hiddenBox) return;
-    // info sa posiela pri kazdom (opatovnom) nacitani modelu; prekresli sa len ked sa obsah naozaj zmenil
+    // info is sent on every (re)load of the model; redrawn only when the content actually changed
     const info = this._info();
     const sig = stable(info ? { min: info.min, max: info.max, m: info.materials } : null);
     if (sig === this._infoSig) return;
@@ -2893,19 +2893,19 @@ class DomViewerCardEditor extends HTMLElement {
     this._renderViews();
   }
 
-  // priehladnost materialov pre pohlad i: posuvnik 0-100 %, ulozia sa len hodnoty pod 100 %
+  // material transparency for view i: slider 0-100 %, only values below 100 % are saved
   _fadeRows(i, info) {
     const box = document.createElement("div");
     box.className = "cols";
     const mats = this._visibleMats(info);
     if (!mats.length) {
       const p = document.createElement("p");
-      p.textContent = "Materialy sa zobrazia po nacitani modelu v nahlade.";
+      p.textContent = "Materials appear after the model loads in the preview.";
       box.appendChild(p);
       return box;
     }
     const note = document.createElement("p");
-    note.textContent = "Skryte plochy (vyssie) maju prednost pred priehladnostou. 100 % = bez zmeny.";
+    note.textContent = "Hidden surfaces (above) take precedence over transparency. 100 % = no change.";
     box.appendChild(note);
     const cur = (name) => (this._views[i].fade || []).find((x) => x && String(x.name) === name);
     for (const m of mats) {
@@ -2948,7 +2948,7 @@ class DomViewerCardEditor extends HTMLElement {
     return box;
   }
 
-  // po zmene hodnot pohladu sa nahlad nastavi na tento pohlad (aj ked HA nahlad vytvori nanovo)
+  // after the view values change, the preview switches to this view (even if HA recreates the preview)
   _focusView(i) {
     const v = this._views[i];
     if (!v || !v.name) return;
@@ -2995,7 +2995,7 @@ class DomViewerCardEditor extends HTMLElement {
     const btn = this._pickBtns[i];
     if (btn) {
       btn.classList.add("active");
-      btn.textContent = "Klikni v nahlade na model (zrusit)";
+      btn.textContent = "Click the model in the preview (cancel)";
     }
     window.dispatchEvent(
       new CustomEvent("glb-viewer-pick", {
@@ -3015,7 +3015,7 @@ class DomViewerCardEditor extends HTMLElement {
     const btn = this._pickBtns ? this._pickBtns[this._pickIdx] : null;
     if (btn) {
       btn.classList.remove("active");
-      btn.textContent = "Vybrat polohu klikom v modeli";
+      btn.textContent = "Pick position by clicking in the model";
     }
     this._pickIdx = null;
     this._pickToken = null;
@@ -3041,7 +3041,7 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "dom-viewer-card",
   name: "GLB viewer",
-  description: "Interaktivny 3D model (GLB) s obmedzenym otacanim a naklonom",
+  description: "Interactive 3D model (GLB) with limited rotation and tilt",
   preview: false,
 });
 

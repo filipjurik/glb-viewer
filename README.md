@@ -1,23 +1,21 @@
 # GLB Viewer
 
-Lovelace karta pre Home Assistant, ktorá zobrazí 3D model domu (`.glb` / `.gltf`, napr. export zo SketchUpu) a prepojí ho s entitami: svetlá v miestnostiach, noc a tiene podľa skutočného slnka, pohľady kamery.
+A Lovelace card for Home Assistant that shows a 3D model of your house (`.glb` / `.gltf`, e.g. exported from SketchUp) and links it to your entities: room lights, night mode and shadows driven by the real sun, camera views.
 
-*Lovelace card for Home Assistant that shows a 3D model of a house (`.glb` / `.gltf`) and links it to entities: room lights, night mode and shadows from the real sun, camera views.*
-
-## Inštalácia
+## Installation
 
 ### HACS
-1. HACS → tri bodky vpravo hore → **Custom repositories**.
-2. Zadaj `https://github.com/filipjurik/glb-viewer`, kategória **Dashboard**.
-3. Nainštaluj **GLB Viewer** a obnov prehliadač (Ctrl+F5).
+1. HACS → three dots (top right) → **Custom repositories**.
+2. Enter `https://github.com/filipjurik/glb-viewer`, category **Dashboard**.
+3. Install **GLB Viewer** and refresh the browser (Ctrl+F5).
 
-### Ručne
-1. Skopíruj `glb-viewer.js` do `/config/www/community/glb-viewer/`.
-2. Nastavenia → Dashboardy → ⋮ → Zdroje → pridaj `/local/community/glb-viewer/glb-viewer.js` ako **JavaScript modul**.
+### Manual
+1. Copy `glb-viewer.js` to `/config/www/community/glb-viewer/`.
+2. Settings → Dashboards → ⋮ → Resources → add `/local/community/glb-viewer/glb-viewer.js` as a **JavaScript module**.
 
-Model ulož napr. do `/config/www/dom/dom.glb` (v HA dostupný ako `/local/dom/dom.glb`).
+Put your model e.g. at `/config/www/dom/dom.glb` (available in HA as `/local/dom/dom.glb`).
 
-## Použitie
+## Usage
 
 ```yaml
 type: custom:dom-viewer-card
@@ -26,42 +24,42 @@ height: 500px
 night: sun
 front_azimuth: 180
 lights:
-  - name: obyvacka
+  - name: livingroom
     entities:
-      - light.obyvacka
+      - light.livingroom
     position: [2.3, 2.25, 4]
     intensity: 20
-    windows: obyvacka
+    windows: livingroom
 ```
 
-Kartu je najjednoduchšie nastaviť vizuálnym editorom. Three.js sa načítava z CDN (`esm.sh`), karta preto potrebuje internet; inú adresu možno nastaviť cez `three_url`.
+The easiest way to configure the card is the visual editor. Three.js is loaded from a CDN (`esm.sh`), so the card needs internet access; another URL can be set with `three_url`.
 
-## Hlavné možnosti
+## Main options
 
-| Možnosť | Popis |
+| Option | Description |
 | --- | --- |
-| `model` | cesta k `.glb` / `.gltf` |
-| `height`, `width`, `background`, `hide_border` | vzhľad karty |
-| `model_yaw`, `model_pitch`, `model_roll`, `flip_x`, `flip_z` | orientácia modelu |
-| `min/max/initial_tilt`, `min/max/initial_azimuth`, `min/max/initial_zoom` | limity a štart kamery |
-| `enable_pan` | posúvanie pohľadu |
-| `auto_rotate`, `rotation_per_second`, `show_play_button` | automatické otáčanie (s limitmi sa otáča tam a späť) |
-| `night` | `off` / `on` / `sun` (podľa `sun.sun`) / `entity` |
-| `night_ambient` | minimálny jas scény v noci (0 – 1) |
-| `front_azimuth` | svetová strana, na ktorú smeruje predná strana modelu (0 = sever, 180 = juh) |
-| `shadow_intensity` | tieň na zemi pod domom (0 = vypnuté, tiene na modeli ostanú) |
-| `lights_shadows`, `lights_test` | tiene zo svetiel / zapnutie všetkých svetiel (test) |
-| `window_glow` | žiara okien pri zapnutom svetle |
-| `hidden_materials`, `material_colors`, `views` | skryté plochy, farby a priehľadnosť materiálov, pohľady kamery |
+| `model` | path to the `.glb` / `.gltf` file |
+| `height`, `width`, `background`, `hide_border` | card appearance |
+| `model_yaw`, `model_pitch`, `model_roll`, `flip_x`, `flip_z` | model orientation |
+| `min/max/initial_tilt`, `min/max/initial_azimuth`, `min/max/initial_zoom` | camera limits and start position |
+| `enable_pan` | panning of the view |
+| `auto_rotate`, `rotation_per_second`, `show_play_button` | auto-rotate (with azimuth limits it swings back and forth) |
+| `night` | `off` / `on` / `sun` (follows `sun.sun`) / `entity` |
+| `night_ambient` | minimum scene brightness at night (0 – 1) |
+| `front_azimuth` | compass direction the front of the model faces (0 = north, 180 = south) |
+| `shadow_intensity` | ground shadow under the house (0 = off, shadows on the model stay) |
+| `lights_shadows`, `lights_test` | shadows from lights / turn on all lights (test) |
+| `window_glow` | window glow when the light is on |
+| `hidden_materials`, `material_colors`, `views` | hidden surfaces, material colors and transparency, camera views |
 
-### Svetlá (`lights`)
+### Lights (`lights`)
 
-`name`, `entities` (viac entít), `position: [x, y, z]` (metre v súradniciach modelu), `color`, `intensity`, `distance`, `shadows` (tieň majú najviac 6 práve zapnutých svetiel), `use_entity_color`, `use_brightness`, `disabled` (nepoužije sa, ostane uložené), `glow_only` (svetlo neosvetľuje model, iba rozžiari okno), `windows` (okná, ktoré pri svetle svietia), `window_entity_color`.
+`name`, `entities` (several entities allowed), `position: [x, y, z]` (meters in model coordinates), `color`, `intensity`, `distance`, `shadows` (at most 6 currently lit lights get a shadow), `use_entity_color`, `use_brightness`, `disabled` (not used, stays saved), `glow_only` (the light does not illuminate the model, it only makes the window glow), `windows` (windows that glow with this light), `window_entity_color`.
 
-### Okná a materiály
+### Windows and materials
 
-Okno sa rozpozná podľa materiálu s názvom `okno_`, `sklo_`, `window_` alebo `glass_` + názov miestnosti (v `windows` sa uvádza len názov miestnosti). V editore sa v zoznamoch materiálov zobrazujú materiály s predponami `wall_`, `roof_`, `window_`, `glass_`, `color_`, `floor_`, `door_`; ostatné sa dajú zapnúť voľbou „ostatné“.
+A window is recognized by a material named `okno_`, `sklo_`, `window_` or `glass_` + room name (in `windows` you enter just the room name). In the editor, the material lists show materials with the prefixes `wall_`, `roof_`, `window_`, `glass_`, `color_`, `floor_`, `door_`; other materials can be shown with the “other” option.
 
-## Tipy k exportu zo SketchUpu
+## SketchUp export tips
 
-Model exportuj ako glTF (Y-up). Ak je dom otočený alebo zrkadlový, oprav to v karte (`model_yaw`, `flip_x`).
+Export the model as glTF (Y-up). If the house comes out rotated or mirrored, fix it in the card (`model_yaw`, `flip_x`).
