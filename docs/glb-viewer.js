@@ -1,12 +1,12 @@
 /*
  * glb-viewer – 3D model (GLB) viewer for Home Assistant Lovelace (Three.js)
- * Version: 0.3.42
+ * Version: 0.3.43
  * Rotation around the vertical axis (left/right) + limited tilt (up/down),
  * configurable from the visual card editor (path to GLB, rotation/zoom limits).
  * Three.js is loaded from a CDN on first use (see `three_url`).
  */
 
-const VERSION = "0.3.42";
+const VERSION = "0.3.43";
 
 // Base URL of the Three.js package; addons are loaded from <base>/examples/jsm/...
 const THREE_URL = "https://esm.sh/three@0.170.0";
@@ -2031,7 +2031,7 @@ const LIGHT_LABELS = {
   name: "Name",
   entities: "Entities (the light turns on when any of them is on)",
   x: "Position X (m)",
-  y: "Position Y – height (m)",
+  y: "Position Y (m)",
   z: "Position Z (m)",
   color: "Light color",
   intensity: "Intensity",
@@ -2044,7 +2044,7 @@ const LIGHT_LABELS = {
 
 const LIGHT_HELPERS = {
   entities: "Empty = the light is always on",
-  x: "Model coordinates in meters",
+  x: "Model coordinates in meters (with a Z-up export, Z is the height)",
   intensity: "Typical room 20 to 60",
   shadows: "Performance-heavy, at most 3 lights with shadows recommended",
   softness: "Applies only with shadows. Higher number = softer edges; large values may show banding",
