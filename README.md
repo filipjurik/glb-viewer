@@ -67,3 +67,7 @@ A window is recognized by a material named `okno_`, `sklo_`, `window_` or `glass
 ## SketchUp export tips
 
 Export the model as glTF (Y-up). If the house comes out rotated or mirrored, fix it in the card (`model_yaw`, `flip_x`).
+
+## Support
+
+If you like this card, you can support its development: [paypal.me/fijur76](https://paypal.me/fijur76)
