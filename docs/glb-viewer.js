@@ -1,12 +1,12 @@
 /*
  * glb-viewer – 3D model (GLB) viewer for Home Assistant Lovelace (Three.js)
- * Version: 0.3.41
+ * Version: 0.3.42
  * Rotation around the vertical axis (left/right) + limited tilt (up/down),
  * configurable from the visual card editor (path to GLB, rotation/zoom limits).
  * Three.js is loaded from a CDN on first use (see `three_url`).
  */
 
-const VERSION = "0.3.41";
+const VERSION = "0.3.42";
 
 // Base URL of the Three.js package; addons are loaded from <base>/examples/jsm/...
 const THREE_URL = "https://esm.sh/three@0.170.0";
@@ -1382,10 +1382,10 @@ class DomViewerCard extends HTMLElement {
 
   /* ---------------- windows: glow of window glass when the room light is on ---------------- */
 
-  // windows: a material named okno_ / sklo_ / window_ / glass_ + <room>; (fallback: an equally named object in the model)
+  // windows: a material named window_ / glass_ + <room>; (fallback: an equally named object in the model)
   _collectWindows(root) {
     const ctx = this._ctx;
-    const re = /^(?:okno|sklo|window|glass)_(.+)$/i;
+    const re = /^(?:window|glass)_(.+)$/i;
     const wins = {};
     const clones = new Map();
     root.traverse((o) => {
@@ -1422,7 +1422,7 @@ class DomViewerCard extends HTMLElement {
   _windowKeys(text) {
     return String(text || "")
       .split(/[,;\s]+/)
-      .map((x) => x.trim().toLowerCase().replace(/^(okno|sklo)_/, ""))
+      .map((x) => x.trim().toLowerCase().replace(/^(window|glass)_/, ""))
       .filter(Boolean);
   }
 

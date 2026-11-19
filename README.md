@@ -62,7 +62,7 @@ The easiest way to configure the card is the visual editor. Three.js is loaded f
 
 ### Windows and materials
 
-A window is recognized by a material named `okno_`, `sklo_`, `window_` or `glass_` + room name (in `windows` you enter just the room name). In the editor, the material lists show materials with the prefixes `wall_`, `roof_`, `window_`, `glass_`, `color_`, `floor_`, `door_`; other materials can be shown with the “other” option.
+A window is recognized by a material named `window_` or `glass_` + room name (in `windows` you enter just the room name). In the editor, the material lists show materials with the prefixes `wall_`, `roof_`, `window_`, `glass_`, `color_`, `floor_`, `door_`; other materials can be shown with the “other” option.
 
 ## SketchUp export tips
 
