@@ -66,7 +66,7 @@ A window is recognized by a material named `window_` or `glass_` + room name (in
 
 ## SketchUp export tips
 
-Export the model as glTF (Y-up). If the house comes out rotated or mirrored, fix it in the card (`model_yaw`, `flip_x`).
+Export the model as glTF (Z-up). If the house comes out rotated or mirrored, fix it in the card (`model_yaw`, `flip_x`).
 
 ## Support
 
